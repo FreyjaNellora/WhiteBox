@@ -1,283 +1,270 @@
 # WhiteBox
 
-[![CI](https://github.com/FreyjaNellora/WhiteBox/actions/workflows/ci.yml/badge.svg)](https://github.com/FreyjaNellora/WhiteBox/actions/workflows/ci.yml)
+**A portable, transparent memory you own — plain markdown files on your disk that every AI you use can read and write.** One identity across Claude, ChatGPT, Gemini, Cursor, Kimi, and anything else that speaks the spec. No black-box memory, no vendor lock-in, no model of you that you can't open in a text editor.
 
-**A portable, transparent, multi-agent identity substrate for AI.** Plain markdown files on your disk that your AIs read, write to, and collaboratively maintain — across Claude, ChatGPT, Gemini, Cursor, Kimi, and anything else that speaks the spec. One identity, every session, every vendor. No black-box memory. No vendor lock-in. No model of you that you can't read.
+> **Status:** `v1.0.0-prealpha` — design feature-complete and audited. Expect iteration; not yet validated by external users.
 
-> **Status:** `v1.0.0-prealpha.6` — v1 design feature-complete and audited (30+ security and correctness fixes landed in April 2026). v1.1 design (synthesis tier, weighted promotion, swarm coordination, search) in active development. Expect breakage and iteration; not yet validated by external users.
+**Pick your path:**
+- 🟢 **The essentials** (your memory + your favorite AI) → do [Part A](#part-a-whitebox-memory) + [Part B](#part-b-connect-your-ai). ~15 minutes.
+- 🔵 **The full system** (+ a private multi-agent hub you reach from your phone) → also do [Part C](#part-c-the-hub-optional).
+---
 
-> **Just want to install it?** If you're not a developer, the friendliest path is **[INSTALL_FOR_FRIENDS.md](INSTALL_FOR_FRIENDS.md)** — five minutes, no terminal, no Node.js, no command-line. Just download a folder, load the browser extension, and walk through a wizard.
+## What you're building
+
+```
+            YOU  (the only authority — edit anytime, plain markdown)
+             │
+             ▼
+      ┌─────────────┐
+      │ YOUR VAULT  │   a folder on your disk. The model of you.
+      └──────┬──────┘
+             │  read + write (every change audited)
+      ┌──────┴───────────────────────────────────┐
+      │  your AIs                                  │   ← Part B: connect them
+      │  Claude · ChatGPT · Gemini · Cursor ·      │
+      │  Kimi · Claude Code …                      │
+      └────────────────────────────────────────────┘
+
+   (optional) Part C — THE HUB:
+   a private team of AI agents on your PC that you reach
+   from your phone over an encrypted Tailscale tunnel.
+```
+
+Three things, installed in order: **(A)** the vault + tools → **(B)** wire your AIs to it → **(C)** the optional hub.
 
 ---
 
-## The problem
+## Prerequisites — get these first
 
-Every AI agent builds its own model of you, locked inside its own walled system. Switch from ChatGPT to Claude — start over. Use Gemini at work and Claude at home — they don't share. Your "AI memory" is split across N vendors, each carrying a partial, opaque, vendor-owned representation of who you are. The longer you use AI, the more locked-in you become — not to one agent, but to every one of them, separately.
+Grab only what your path needs.
 
-WhiteBox breaks that pattern. The model of you lives on **your disk**, in **plain markdown**, **maintained by your AIs together**, with **you as the final authority** at every layer.
+| Tool | Needed for | Get it | Verify |
+|---|---|---|---|
+| **Node.js 18+** | the memory (Parts A & B) | [nodejs.org](https://nodejs.org) — any LTS | `node --version` |
+| **git** | cloning the repo | [git-scm.com](https://git-scm.com) (or download the ZIP) | `git --version` |
+| **A Chromium browser** | the browser extension (Part B) | Chrome / Edge / Brave / Arc / Vivaldi | — |
+| **Python 3.11+** | the hub (Part C) | [python.org](https://python.org) — tick **"Add to PATH"** | `python --version` |
+| **Ollama** | local models in the hub (Part C) | [ollama.com](https://ollama.com) | `ollama --version` |
+| **Tailscale** | reach the hub from your phone (Part C) | [tailscale.com](https://tailscale.com) | tray/menubar icon |
 
-## How it works (the river-and-ants frame)
+**Opening a terminal:**
+- **Windows:** Windows key → type `cmd` → Enter. *(Terminal inside a folder: open the folder, click the address bar, type `cmd`, Enter.)*
+- **macOS:** Cmd-Space → "Terminal".
+- **Linux:** your shell of choice.
 
-The architecture has a useful natural metaphor:
-
-- **The river** = the flow of observations into your vault over time. Every conversation drops more water. The river only flows forward (append-only). Each AI agent is a tributary.
-- **The watersheds** = vaults. Separate folders on disk that don't mix unless you explicitly grant access. Personal here, work-acme there, client-12345 in its own basin.
-- **The ants** = the agents. They forage (read), they build (write observations), they leave pheromone trails on what proves useful (access reinforcement), other ants follow strong trails. They never talk directly — they coordinate through what they leave for each other in the shared environment.
-- **Periodic reorganization** = the swarm steps back from foraging to rebuild a coherent map of "what we collectively know about this person." That map (the **synthesis**) is what new agents boot from.
-
-This is technically a stigmergic system — the same pattern that drives Wikipedia, ant colonies, and other decentralized collective-intelligence systems. WhiteBox is its application to AI memory.
-
-## The five invariants (the discipline)
-
-Every design choice in WhiteBox tests against *"is this what the sloppy vendors do?"* If yes, do the opposite. These five are non-negotiable:
-
-1. **You own the disk.** No mode of operation requires uploading the vault. Cloud features (if they ever ship) are optional adapters, never core.
-2. **Plain text, schema-defined.** Every file in the vault is markdown / YAML readable in any editor. The schema is the contract — anything implementing it can read your vault.
-3. **Append-only with full audit.** Both writes AND reads are audited. Any change is reconstructible from the log; any agent decision can be traced to the state it was reading.
-4. **Multi-agent collaborative, single-authority override.** Agents do the curation. You have the veto on every layer (observations, syntheses, scopes, source trust).
-5. **Synthesis is derived and rejectable.** Anything an agent infers or condenses about you lives in its own tier with `derived_from` provenance. You can reject, edit, or accept it into your own curated files.
-
-## What we explicitly don't do (that other vendors do)
-
-| Sloppy pattern | Our discipline |
-|---|---|
-| Memory in vendor walls (ChatGPT memory, Claude projects, Gemini memory) | Vault on **your** disk; vendor reads, never owns |
-| Each vendor builds a siloed model of you | One shared vault all agents read and contribute to |
-| Silent memory edits — discover later | Append-only + audit log; every change recoverable |
-| Sycophancy amplified by personalization | Verbatim quotes only on observations; cross-source corroboration before promotion |
-| "I remember you mentioned X" with no provenance | Every entry has `source`, `date`, `confidence` — agent can cite chapter and verse |
-| Multi-tenant memory cross-leaks | Single-tenant by design; plain files; no shared backend |
-| Memory grows forever; no demotion when you change | Recency decay + demotion loop + staleness review |
-| Vendor-specific opaque schema | Published spec; plain markdown; anyone can implement |
-| Summaries silently replace what you said | Verbatim invariant on observations; synthesis is a separate tier you can reject |
-| One bucket — work AI sees personal context | Scopes are first-class; agents see only what their scope grants |
-| Privacy = vendor promise | Privacy = you control the disk |
-| Profile drift never corrected | Periodic synthesis with explicit user override |
-| Export is theater (broken format, undocumented) | Export IS the format — the disk file is the export |
-
-This table is the project's reviewer checklist. Every PR has to land on the right side of it.
+> ⚠️ **Windows + OneDrive:** don't put your vault (or the built MCP server) inside a OneDrive-synced folder — its on-demand caching causes intermittent read failures. Use a path outside OneDrive, e.g. `C:\Users\<you>\whitebox-vault`.
 
 ---
 
-## Where WhiteBox fits in the landscape
+## Part A: WhiteBox memory
+*~10 minutes*
 
-The "user-owned markdown + AI reads it" design space is now crowded with serious players. Where each diverges:
-
-- **[Karpathy's LLM Wiki pattern](https://gist.github.com/karpathy/442a6bf555914893e9891c11519de94f)** — Markdown knowledge base about *the world*. WhiteBox is complementary: LLM Wiki for knowledge, WhiteBox for identity.
-- **[OpenBrain (OB1)](https://github.com/NateBJones-Projects/OB1)** — PostgreSQL + pgvector + MCP. Database-backed memory with semantic search. Different storage philosophy. WhiteBox wins when you want zero infrastructure and files you can open in any editor.
-- **Anthropic's Import Memory + Claude Code `memory.md`** — Markdown memory inside the Claude ecosystem. Official and well-integrated, but Claude-only. WhiteBox is cross-vendor from day one.
-- **[Letta (formerly MemGPT)](https://docs.letta.com/concepts/memgpt/)** — Closest architectural cousin: agent self-edits memory tiers via function calls. WhiteBox uses the same self-edit philosophy but stores in your filesystem rather than Letta's hosted DB.
-- **mem0 / ChatGPT Memory / Claude Memory / Rewind** — Vendor-owned or service-hosted memory with embeddings + opaque extraction. [docs/COMPARISON.md](docs/COMPARISON.md) has the full breakdown.
-
-**WhiteBox's specific wedge:** the **only** project centered on multi-agent coordination over a single user-owned vault, with verbatim discipline, source attribution, weighted cross-source promotion, and a published schema other tools can implement. Optimized for the case where 3+ AI agents (different vendors, different sessions, different time horizons) write to the same vault about the same person over months and years.
-
----
-
-## Quick install
-
-WhiteBox has three independent components. Install whichever you'll actually use; they all read/write the same vault folder.
-
-### 1. Create your vault (always do this first)
-
+### A1 — Get the code
 ```bash
 git clone https://github.com/FreyjaNellora/WhiteBox.git
-cd WhiteBox/whitebox-cli
-npm install && npm run build
+cd WhiteBox
+```
+*No git? Download the ZIP from the GitHub page, extract it, and `cd` into the folder.*
+
+### A2 — Build the CLI + create your vault
+```bash
+cd whitebox-cli
+npm install
+npm run build
 node bin/whitebox.js init ~/whitebox-vault
 ```
+**What you'll see:** a new folder `~/whitebox-vault` (Windows: `C:\Users\<you>\whitebox-vault`) seeded with `AGENTS.md`, `identity.md`, `working-style.md`, `tags.md`, and an empty `observations/`.
+*(Optional) put `whitebox` on your PATH:* `npm link` (Windows: run the terminal as Administrator).
 
-This creates `~/whitebox-vault` with `AGENTS.md`, `identity.md`, `working-style.md`, `tags.md`, and an empty `observations/` folder. Open `identity.md` and `working-style.md` in your text editor and add a few sentences about who you are. Five minutes is enough.
+### A3 — Tell it who you are *(5 minutes — the part that matters)*
+Open `identity.md` and `working-style.md` in any text editor and write a few real sentences: who you are, how you want AI to work with you. **This is the entire value of WhiteBox — the templates are just stubs.**
 
-### 2. Install the MCP server (for Claude Desktop / Claude Code / Cursor / Gemini CLI)
-
+### A4 — Build the memory server (MCP)
 ```bash
 cd ../whitebox-mcp
-npm install && npm run build
+npm install
+npm run build
 ```
+**What you'll see:** a built server at `whitebox-mcp/dist/index.js` — this is what your AIs talk to.
 
-Then add to your MCP client config (e.g. `~/.config/Claude/claude_desktop_config.json` for Claude Desktop):
+> **Windows + OneDrive only** — copy the built server out of OneDrive first:
+> ```bash
+> mkdir %USERPROFILE%\.whitebox-mcp && xcopy /E /I dist %USERPROFILE%\.whitebox-mcp\dist && xcopy /E /I node_modules %USERPROFILE%\.whitebox-mcp\node_modules && copy package.json %USERPROFILE%\.whitebox-mcp\
+> ```
+> *(macOS/Linux: `mkdir -p ~/.whitebox-mcp && cp -r dist node_modules package.json ~/.whitebox-mcp/`)*
 
+✅ **You now have a vault + a memory server.** Next: connect your AIs.
+
+---
+
+## Part B: Connect your AI
+
+AIs connect one of two ways: **MCP** (desktop + coding tools, full read/write) or the **browser extension** (claude.ai / chatgpt.com / gemini). Do whichever you actually use.
+
+### The MCP config block *(you'll reuse this everywhere)*
+Point `args` at your built server and `WHITEBOX_VAULT_ROOT` at your vault:
 ```json
 {
   "mcpServers": {
     "whitebox": {
       "command": "node",
-      "args": ["/absolute/path/to/WhiteBox/whitebox-mcp/dist/index.js"],
-      "env": {
-        "WHITEBOX_VAULT_ROOT": "/absolute/path/to/whitebox-vault"
-      }
+      "args": ["/absolute/path/to/whitebox-mcp/dist/index.js"],
+      "env": { "WHITEBOX_VAULT_ROOT": "/absolute/path/to/whitebox-vault" }
     }
   }
 }
 ```
+> **Windows paths in JSON:** use `C:/forward/slashes` or `C:\\double\\backslashes` (never single `\`).
 
-Restart your MCP client. You should see seven WhiteBox tools available: `bootstrap`, `read_file`, `list_files`, `grep`, `append_observation`, `propose_stable_edit`, `list_conflicts`.
+### B1 — Claude Desktop
+1. Open the config file:
+   - **macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+   - **Linux:** `~/.config/Claude/claude_desktop_config.json`
+2. Paste the MCP block (create the file if it's missing).
+3. **Fully quit** Claude Desktop (tray → Quit, not just the window) and reopen.
 
-### 3. Install the browser extension (for claude.ai, chatgpt.com, gemini.google.com)
+**What you'll see:** Settings → Developer → MCP Servers → `whitebox` *connected*, with 7 tools (`bootstrap`, `read_file`, `list_files`, `grep`, `append_observation`, `propose_stable_edit`, `list_conflicts`).
 
-Open `chrome://extensions` (or the equivalent in your Chromium browser):
-1. Toggle **Developer mode** on (top right).
-2. Click **Load unpacked** and select the `whitebox-extension/` folder from this repo.
-3. Pin the WhiteBox icon to your toolbar.
-4. Click the icon → **Open setup…** and grant access to your vault folder.
+### B2 — Claude Code
+- **Per project:** drop a `.mcp.json` (the block above) at your repo root.
+- **Global (all sessions):** `claude mcp add whitebox node /path/to/whitebox-mcp/dist/index.js -e WHITEBOX_VAULT_ROOT=/path/to/vault`
+- **Bonus:** add to `~/.claude/CLAUDE.md` → *"Before responding, read `AGENTS.md` from the WhiteBox vault via the `whitebox` MCP server."* Now every session boots already oriented.
 
-Pick a style on first run (Office / Engineer / Gamer-Modder). Open `claude.ai/new` — your first message will automatically include vault context, and the agent will know who you are.
+### B3 — Cursor / Cline / Continue.dev
+Same MCP block, in each tool's MCP settings panel. All speak stdio MCP.
 
-### 4. (Optional) Install the Claude Code skill
+### B4 — Gemini CLI
+Config: `~/.gemini/settings.json` (Windows: `C:\Users\<you>\.gemini\settings.json`). Same block; you may add `"timeout": 30000`. Restart `gemini`.
 
-```bash
-mkdir -p ~/.claude/skills
-cp -r claude-code-skills/whitebox ~/.claude/skills/
-```
+### B5 — ChatGPT (Desktop + web) — *Plus / Pro / Business / Enterprise*
+ChatGPT takes MCP only over **HTTPS (SSE)**, not local stdio, and there's no config file — you register a URL in the UI:
+1. Run the server in SSE mode + expose it over HTTPS:
+   ```bash
+   WHITEBOX_VAULT_ROOT="<vault>" node /path/to/whitebox-mcp/dist/index.js --transport sse --port 8787
+   ngrok http 8787        # or a Cloudflare Tunnel
+   ```
+2. ChatGPT → **Settings → Connectors → Advanced → Developer mode** (on).
+3. **Connectors → Create** → paste the public `…/sse` URL → name it "WhiteBox" → authorize.
 
-Teaches Claude Code about the WhiteBox tool surface, the discipline rules, and the self-automation pattern.
+*(Free tier / no MCP? Use the browser extension below, or paste a one-paragraph summary into Custom Instructions.)*
 
----
+### B6 — The browser extension *(claude.ai · chatgpt.com · gemini.google.com)*
+1. Open `chrome://extensions` (or `edge://extensions`, etc.).
+2. Toggle **Developer mode** (top-right) → **Load unpacked** → select the `whitebox-extension/` folder.
+3. Pin the icon → click it → **Open setup…** → **Choose vault folder** → grant access → flip **Enable WhiteBox** on.
 
-## Use cases — the purgability principle
+**What you'll see:** open `claude.ai/new`, type *"What do you know about me from my vault?"* — your first message auto-includes vault context and the AI knows who you are. *(F12 → Console shows `[whitebox] … injected N chars of vault context`.)*
 
-Real users layer multiple vaults by **ownership and lifespan**, separated at the folder level so cleanup is a single physical action (`rm -rf`), not a fuzzy query. A typical layout:
+### B7 — Mobile / anything without MCP
+Run `whitebox paste` (copies your vault context to the clipboard) and paste it as your first message — works anywhere. Or set the AI's **Custom Instructions** once to a one-paragraph summary; it syncs to mobile.
 
-```
-~/whitebox/
-  personal/                    ← yours forever
-  work/
-    company-acme/              ← bounded to that employer; rm -rf when you leave
-      projects/odin/           ← bounded to that project
-  clients/
-    case-12345/                ← per-case privilege boundary (lawyers)
-```
+**Connection cheat-sheet:**
+| Surface | How |
+|---|---|
+| Claude Desktop / Code, Cursor, Gemini CLI | MCP over stdio — B1–B4 |
+| ChatGPT Desktop / web (Plus+) | MCP over SSE tunnel — B5 |
+| claude.ai / chatgpt.com / gemini in a browser | Browser extension — B6 |
+| Any mobile app | Paste-in / Custom Instructions — B7 |
 
-**Lawyer.** One vault per matter. Privilege boundaries are *physical*: there is no path by which client A's AI can read client B's data, because it's a different folder it has no handle to. Personal vault holds your professional identity (specialization, brief style, courtroom voice). Survives every matter closure.
-
-**Engineer.** Per-employer vault for codebase knowledge, internal jargon, deployment lore. Personal vault for your professional self ("prefers TypeScript", "burned out in 2024 — watch for early signs"). Job change = `rm -rf work/company-acme/`. Your professional identity survives every employer.
-
-**Executive Assistant / Secretary.** Per-principal vault for the executive you support. The principal's medical/family info lives in *their* vault, with you granted scoped read. New boss = swap principal vault. Your own continuity persists.
-
-**Project work.** The project gets its own vault, owned collectively by the team (possibly synced via git). Multiple agents read it, contribute observations. Synthesis tier produces the "current state of the project" any new team member or new agent boots from.
-
-The architecture makes the right thing easy and the wrong thing impossible — your work AI was never granted access to your personal vault, so it can't accidentally leak personal context. Quitting a job doesn't reset your personal AI.
-
----
-
-## What you get after install
-
-- **A vault** of markdown files you own, on your disk, openable in any text editor.
-- **The same vault read by every AI you use** — Claude Desktop, Claude Code, Cursor, Gemini CLI via MCP; claude.ai / chatgpt.com / gemini.google.com via browser extension.
-- **A marker protocol** the agent emits in browser chats (`{wb-fetch:}`, `{wb-scope:}`, `{wb-bootstrap}`, `{wb-save}…{/wb-save}`, `{wb-context:}`) that becomes clickable pills in the UI so every action is auditable.
-- **A floating HUD** showing vault state, conflicts, lock status, agent bypass tier, danger badges.
-- **In-page help bubble** with a 24-page wikibook + hover tooltips. Press the popup's `Help` link to open on any page.
-- **A vault lock with passphrase** (UX gate today; AES-GCM encryption planned).
-- **Per-trigger danger toggles** — lock on screen lock / idle / tab close / browser exit, each independently configurable.
-- **Agent bypass tiers** for what the agent can do while the vault is locked.
-- **An autonomous-write audit log** at `audit/YYYY-MM-DD.md`. Every save is one line; bypass-permitted writes are annotated.
-- **Source-stamping** so agents can't lie about which platform they came from.
-- **Optional passive auto-log** of full conversations to `conversations/YYYY-MM-DD/<id>-part-N.md`, chunked at 40K chars.
-
-For the full setup walkthrough see [QUICKSTART.md](QUICKSTART.md). For everything WhiteBox does and doesn't do, see [docs/GUARDRAILS.md](docs/GUARDRAILS.md). To uninstall (your vault folder is never touched), see [UNINSTALL.md](UNINSTALL.md).
+✅ **Your AIs now share one memory of you.** That's the core product. Part C is the optional power-up.
 
 ---
 
-## Architecture in three layers
+## Part C: The hub *(optional)*
 
-The vault has observations + identity files + scopes + audit log today. The full design adds three layers on top:
+The hub (**ChatBox**, WhiteBox's companion) is a small private chat server on your PC where **you and a team of AI agents** talk — reachable **from your phone over an encrypted Tailscale tunnel**, never the open internet. Local models answer for free; your Claude/Kimi subscriptions can answer too, headlessly (no per-token API charges).
 
-- **Layer 1 — Aggregation primitives.** Weighted promotion (`Σ confidence × source_trust × recency_decay`), recency decay (30-day half-life default), cross-source corroboration (≥2 distinct sources required for stable-fact promotion), demotion of stale facts. *Pure functions in `whitebox-shared` — landed in v1.1 development.*
-- **Layer 2 — Swarm coordination.** Access pheromones (read-side audit reinforcing useful items), role-aligned per-agent bootstrap, reactions tier (agents annotate observations without violating append-only), `vault_health` introspection, asymmetric scope grants (the foundation of the purgability principle), `vault_search` (BM25 + tags + recency + pheromone composer). *In active development.*
-- **Layer 3 — Synthesis tier.** Multi-agent collaborative profile-building. Agents periodically generate condensed "current state of the user" syntheses to `synthesized/profile-YYYY-MM-DD.md`. Triggered by new-observation volume, fact demotion, life-event tags, or tag-distribution shifts — not by schedule. Bootstrap injects the latest synthesis once one exists. *Designed; implementation queued.*
+> **Companion repo:** the hub lives in **ChatBox**, WhiteBox's companion repo *(publishing soon)*. ~20–30 minutes, no coding.
 
-Full design with research citations: [docs/DESIGN.md](docs/DESIGN.md).
+### C1 — Install Ollama (the local-model runner)
+1. Install from [ollama.com](https://ollama.com); open it once so it runs in the background.
+2. Pull a couple of small models (the hub's free local agents):
+   ```bash
+   ollama pull llama3.2:3b
+   ollama pull qwen3:4b
+   ```
+   **What to expect:** a few minutes each. They run **entirely on your PC** — private and free.
+
+   **Finding & picking models:** browse [ollama.com/library](https://ollama.com/library). Rule of thumb:
+   - `3b`–`4b` (e.g. `llama3.2:3b`, `qwen3:4b`) → ~4–6 GB RAM, great first responder. **Start here.**
+   - `7b`–`8b` (e.g. `llama3.1:8b`) → smarter, wants ~8–16 GB RAM and ideally a GPU.
+   - Bigger = better but slower/heavier. Match the model to your machine; start small and grow.
+
+### C2 — Install Tailscale on host **and** phone
+1. **On your PC:** install from [tailscale.com](https://tailscale.com) → **sign in** (Google/Microsoft/email). Leave it ON.
+2. **On your phone:** install **Tailscale** from the App Store / Play Store → sign in with the **same account**.
+
+**What you'll see:** both devices appear in your Tailscale list and can now reach each other privately. Your PC's tailnet address looks like `100.x.x.x` — find it with `tailscale ip -4`.
+
+### C3 — (Optional) Wire in your subscription AIs — headless Claude / Kimi
+The hub can drive your **existing subscriptions** with **no per-token API charges** — it runs them *headlessly* (the official CLI in the background).
+
+**Requirements for headless calling to work:**
+- **Claude:** install the **Claude CLI** and **sign in once** (`claude` → log in). Uses your Max/Pro subscription; no API key, nothing extra billed.
+- **Kimi:** get a **Kimi-for-Coding** token at [kimi.com/code/console](https://kimi.com/code/console) and put it (one line) in `ChatBox/.agentchat/kimi-token.txt`. *(This is the flat-fee membership — not the pay-per-token API.)*
+- The hub must run under a **Python that has the `mcp` package** — the setup below installs it into a venv for exactly this reason.
+- No subscription? Skip this — the free local Ollama agents work on their own.
+
+### C4 — Set up + launch the hub
+1. Clone/download **ChatBox** next to WhiteBox; open a terminal inside it.
+2. One-time setup:
+   ```bash
+   python -m venv venv
+   venv\Scripts\pip install -r agentchat\requirements.txt     # Windows
+   # macOS/Linux:  venv/bin/pip install -r agentchat/requirements.txt
+   ```
+3. Copy `.env.example` → `.env`. For phone access, set `AGENTCHAT_HTTP_HOST` and `AGENTCHAT_LAN_IP` to your `tailscale ip -4` address. *(Remove `claude`/`kimi` from the `DOORBELL_MANAGED` line if you're local-only.)*
+4. Start it — **`Start Hub.bat`** (Windows). A window shows your **hub address** + a **pairing PIN**. Keep it open (closing it stops the hub).
+
+### C5 — Pair your phone
+1. On your phone (Tailscale ON), open the **hub address** in your browser.
+2. Type the **PIN** → **Pair**.
+
+**What you'll see:** you're in the chat. Type `@scout hello` and your local model replies. `@claude` / `@kimi` reach your subscription agents (if you did C3). After the first pairing, the phone makes its own PINs from **Settings** — no trip back to the PC.
+
+> 🔒 **Privacy:** the hub binds **only** to your Tailscale address — reachable from your own devices and nowhere else. Not public wifi, not the open internet.
 
 ---
 
-## Contributing
+## Troubleshooting
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the bar and [docs/COMMUNITY.md](docs/COMMUNITY.md) for the softer welcome and good-first-contribution list. Selector updates for the browser extension, integration recipes for new tools, canonical tag proposals, and spec implementations in other languages are the easiest first PRs.
+| Problem | Fix |
+|---|---|
+| `node` / `python` "not recognized" | Reinstall and make sure it's on your PATH (Python: tick "Add to PATH" during install). |
+| Claude Desktop doesn't show the `whitebox` server | **Fully quit** and reopen (tray → Quit). Validate the JSON; on Windows use `/` or `\\` in paths. |
+| `vault not accessible (no_handle / permission_lost)` (extension) | Click the WhiteBox icon → Open setup → Choose vault folder again. |
+| No `[whitebox] … injected` log on claude.ai | The site changed its UI and our selectors drifted — update `src/content/claude-ai.js` or open an issue. |
+| Intermittent vault read failures on Windows | Move the vault **and** built MCP server out of OneDrive (see the warning up top). |
+| Phone can't reach the hub | Tailscale ON on **both** PC and phone, **same** account. |
+| Hub PIN "expired" | PINs last ~90 s; restart the hub or generate a new one from the phone's Settings. |
+| `@scout` never replies | Make sure Ollama is running and you ran the `ollama pull` commands. |
+| `@claude` / `@kimi` never replies | Claude CLI must be signed in; Kimi needs its token file. The hub still works without them. |
+
+**Stuck?** Paste [QUICKSTART.md](QUICKSTART.md) (or this file) into any AI along with your error — it'll walk you through your exact step. Genuinely broken? Open an issue.
 
 ---
+
+## What WhiteBox actually is *(the 60-second version)*
+
+The model of you lives on **your disk**, in **plain markdown**, **maintained by your AIs together**, with **you as the final authority**. Five non-negotiables:
+
+1. **You own the disk** — no mode of operation requires uploading the vault.
+2. **Plain text, schema-defined** — readable in any editor; the schema is the contract.
+3. **Append-only + full audit** — reads *and* writes logged; everything reconstructible.
+4. **Agents curate, you override** — you have the veto on every layer.
+5. **Synthesis is derived + rejectable** — anything an AI infers about you is tagged and rejectable.
+
+The wedge: the **only** project centered on multi-agent coordination over a single user-owned vault — verbatim discipline, source attribution, weighted cross-source promotion, and a published schema anyone can implement. Built for 3+ AIs (different vendors, different sessions) writing to the same vault about the same person over months and years.
+
+---
+
+## Going deeper
+- [QUICKSTART.md](QUICKSTART.md) — the original linear walkthrough (also AI-pasteable)- [spec/WHITEBOX_v1.md](spec/WHITEBOX_v1.md) — the schema · [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## What's in this repo
-
-### Specs
-
-- [spec/WHITEBOX_v1.md](spec/WHITEBOX_v1.md) — frozen schema 1.0
-- [spec/WHITEBOX_v1.1.md](spec/WHITEBOX_v1.1.md) — current spec (passive + active memory layers, source/extract split, vault-wide chunking)
-- [spec/tags-canonical-v1.md](spec/tags-canonical-v1.md) — shared tag vocabulary
-
-### Reference content
-
-- [vault-example/](vault-example/) — reference vault showing the format in practice
-- [vault-example/AGENTS.md](vault-example/AGENTS.md) — the bootloader any agent reads first
-
-### Tools
-
-- [whitebox-shared/](whitebox-shared/) — Shared TypeScript library: vault core, path security, scope parser, observation parser, recency decay, weighted promotion (cross-source corroboration).
-- [whitebox-mcp/](whitebox-mcp/) — MCP server. Tools: `bootstrap`, `read_file`, `list_files`, `grep`, `append_observation`, `propose_stable_edit`, `list_conflicts`.
-- [whitebox-cli/](whitebox-cli/) — CLI. Commands: `init`, `export`, `paste`, `conflicts`, `log`, `grep`, `diagnostics`.
-- [whitebox-extension/](whitebox-extension/) — Chromium browser extension. Bootstrap injection, marker protocol with clickable pills, floating HUD with style presets, vault lock + agent bypass + danger toggles, in-page help wikibook, opt-in passive auto-log, observation capture, session digest.
-- [claude-code-skills/whitebox/](claude-code-skills/whitebox/) — Claude Code skill packaging.
-
-### Documentation
-
-- [QUICKSTART.md](QUICKSTART.md) — end-to-end setup walkthrough (also AI-parseable)
-- [docs/GUARDRAILS.md](docs/GUARDRAILS.md) — what WhiteBox protects, per-source permission tiers, lock + bypass semantics
-- [docs/PITCH.md](docs/PITCH.md) — product pitch
-- [docs/DESIGN.md](docs/DESIGN.md) — design rationale + research citations
-- [docs/COMPARISON.md](docs/COMPARISON.md) — WhiteBox vs mem0 / Letta / ChatGPT Memory / Claude Memory / Rewind
-- [docs/EDITOR_GUIDE.md](docs/EDITOR_GUIDE.md) — using the vault with Obsidian / VS Code / Typora
-- [docs/STRATEGY.md](docs/STRATEGY.md) — adversarial resilience
-- [docs/ADOPTION.md](docs/ADOPTION.md) — GTM sequencing
-- [docs/PRICING.md](docs/PRICING.md) — freemium split
-- [docs/MARKETING.md](docs/MARKETING.md) — recruitment + launch plan
-- [docs/COMMUNITY.md](docs/COMMUNITY.md) — contributor welcome + good-first list
-- [docs/VALIDATION.md](docs/VALIDATION.md) — end-to-end test log
-- [docs/TEST_CHECKLIST.md](docs/TEST_CHECKLIST.md) — what still needs user validation
-- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution bar
-- [CHANGELOG.md](CHANGELOG.md) — release history
-
-### Archive
-
-- [_old-design/](_old-design/) — earlier exploratory drafts, kept for reference
+`whitebox-shared/` core library · `whitebox-mcp/` the MCP server · `whitebox-cli/` the CLI · `whitebox-extension/` the browser extension · `spec/` the schema · `vault-example/` a reference vault · `claude-code-skills/` the Claude Code skill.
 
 ---
 
-## Roadmap
-
-### Shipped
-
-- **v0.1–v0.3** — Schema, MCP server, CLI, browser extension scaffold, community infrastructure.
-- **v1.0.0-prealpha** (current, `.6`) — Marker protocol, MCP bootstrap/grep, vault lock + per-trigger danger toggles, agent bypass tiers, source stamping, audit log, in-page help wikibook, passive auto-log (browser, opt-in), observation capture with source-ref discipline, Claude Code skill packaging.
-- **April 2026 audit pass** — 30+ security and correctness fixes across MCP, CLI, shared library, and extension. Symlink TOCTOU closed, scope bypass closed, atomic audit ordering, observation race fixed, manifest hardening, etc. 126/126 tests passing.
-
-### In active development (v1.1 design)
-
-- **Layer 1: Aggregation primitives** — weighted promotion (✅ landed in `whitebox-shared/src/promotion.ts`), recency decay (✅ landed in `whitebox-shared/src/recency.ts`), cross-source corroboration (✅), demotion / staleness review (queued).
-- **Layer 2: Swarm coordination** — access pheromones, role-aligned bootstrap, `vault_health`, asymmetric scope grants, `vault_search` (BM25 + tags + recency + pheromone composer).
-- **Layer 3: Synthesis tier** — multi-agent collaborative profile-building, trigger-based re-synthesis, demotion review.
-
-### Next milestones
-
-- **v1.0.0-alpha** — v1.1 design layer 1+2 implemented. First external testers. *Target: Summer 2026.*
-- **v1.0.0-beta** — Synthesis tier shipped. Chrome Web Store listing. Per-source guardrails enforced. *Target: Late 2026.*
-- **v1.0.0** — Production-ready. Vault encryption (AES-GCM for `sensitive/`). Obsidian inspector plugin.
-
-### Post-v1.0
-
-- **v1.1+** — SSE transport for MCP (unlocks ChatGPT Desktop), DXT extension package for Claude Desktop, VS Code / Logseq plugins, mobile companion app, optional sync infrastructure (clearly opt-in, vault stays canonical).
-
----
-
-## Why now
-
-- AI agents are proliferating. Users are using several at once. Memory lock-in is the next moat providers will build, and most users won't notice until they want to leave.
-- Model Context Protocol gives a standard transport for the Claude ecosystem, with Gemini CLI native and ChatGPT Desktop adding partial support.
-- Obsidian and similar markdown-vault tools have made user-owned local files mainstream enough to build on.
-- No existing product owns this space — mem0, Letta, Rewind, Personal.ai all ship vendor silos with "portable" only as marketing language. [docs/COMPARISON.md](docs/COMPARISON.md) has the receipts.
-
----
-
-## Status
-
-**Pre-alpha (`v1.0.0-prealpha.6`).** Cross-vendor injection works on claude.ai, chatgpt.com, gemini.google.com from the same local vault. MCP server serves reads and writes live in Claude Desktop / Code / Cursor / Gemini CLI. Browser extension shipping marker protocol, floating HUD, vault lock, agent bypass tiers, audit log, in-page help. CLI commands working. Claude Code skill packaged. April 2026 audit pass closed 30+ security and correctness findings; v1.1 design layers in active development.
-
-Validated by the maintainer. **Not yet validated by external users.** Actively seeking first testers — see [docs/MARKETING.md](docs/MARKETING.md).
+Built in the open. **MIT.** Not yet validated by external users — first testers wanted.
