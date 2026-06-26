@@ -1,0 +1,157 @@
+* { box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #1a1a1a;
+  background: #fafafa;
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+}
+
+nav.side {
+  flex: 0 0 240px;
+  background: white;
+  border-right: 1px solid #e4e4e4;
+  padding: 24px 20px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+nav.side h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+nav.side .subtitle {
+  margin: 2px 0 20px 0;
+  color: #666;
+  font-size: 13px;
+}
+
+nav.side ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+nav.side li {
+  margin: 0;
+}
+
+nav.side a {
+  display: block;
+  padding: 6px 10px;
+  color: #1a1a1a;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 13.5px;
+}
+
+nav.side a:hover {
+  background: #f0f0f0;
+}
+
+main {
+  flex: 1;
+  padding: 28px 40px;
+  max-width: 760px;
+}
+
+section {
+  margin-bottom: 40px;
+  scroll-margin-top: 16px;
+}
+
+h2 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 0 0 12px 0;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #e4e4e4;
+}
+
+h3 {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 18px 0 6px 0;
+}
+
+p, ul, ol {
+  margin: 0 0 12px 0;
+}
+
+ul, ol {
+  padding-left: 24px;
+}
+
+li {
+  margin-bottom: 4px;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  background: #f0f0f0;
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #1a1a1a;
+}
+
+pre {
+  background: #f7f7f7;
+  border: 1px solid #ececec;
+  border-radius: 6px;
+  padding: 12px 14px;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  font-size: 12.5px;
+}
+
+strong {
+  font-weight: 600;
+}
+
+a {
+  color: #1a4fa4;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.version-note {
+  color: #999;
+  font-size: 12px;
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e4e4;
+}
+
+@media (max-width: 720px) {
+  body { flex-direction: column; }
+  nav.side {
+    flex: initial;
+    width: 100%;
+    height: auto;
+    position: static;
+    border-right: none;
+    border-bottom: 1px solid #e4e4e4;
+  }
+  main { padding: 20px; }
+}

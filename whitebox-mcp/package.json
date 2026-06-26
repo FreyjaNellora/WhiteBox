@@ -1,0 +1,33 @@
+{
+  "name": "whitebox-mcp",
+  "version": "1.0.0-prealpha.6",
+  "description": "MCP server for the WhiteBox portable user-memory vault.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "whitebox-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "whitebox-shared": "*",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

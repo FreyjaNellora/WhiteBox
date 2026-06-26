@@ -1,0 +1,20 @@
+{
+  "name": "whitebox-shared",
+  "version": "1.0.0-prealpha.6",
+  "description": "Shared utilities for WhiteBox vault operations. Zero external dependencies.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

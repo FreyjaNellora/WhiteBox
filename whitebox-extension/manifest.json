@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "WhiteBox",
+  "version": "1.0.0",
+  "version_name": "1.0.0-prealpha.6",
+  "description": "Portable user memory for AI agents. Works across Claude, ChatGPT, Gemini, and any other AI you use — your memory follows you.",
+  "permissions": ["storage", "scripting", "tabs", "idle"],
+  "host_permissions": [
+    "https://claude.ai/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*",
+    "https://gemini.google.com/*"
+  ],
+  "_zero_network_note": "host_permissions are for content-script INJECTION only. WhiteBox never makes network requests to external servers. All vault I/O is local (File System Access API). See background.js networkAudit for proof.",
+  "background": {
+    "service_worker": "src/background/background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["src/content/_shared.js", "src/content/memory-pill.js", "src/content/claude-ai.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": ["src/content/_shared.js", "src/content/memory-pill.js", "src/content/chatgpt.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://gemini.google.com/*"],
+      "js": ["src/content/_shared.js", "src/content/memory-pill.js", "src/content/gemini.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "src/popup/popup.html",
+    "default_title": "WhiteBox"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/lib/help-content.js",
+        "src/lib/help-hover.js",
+        "src/regrant/regrant.html"
+      ],
+      "matches": [
+        "https://claude.ai/*",
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*",
+        "https://gemini.google.com/*"
+      ]
+    }
+  ]
+}

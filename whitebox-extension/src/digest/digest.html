@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhiteBox — Session digest</title>
+  <link rel="stylesheet" href="digest.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Session digest</h1>
+      <p class="subtitle">Pick the moments worth saving. Verbatim only — nothing gets paraphrased.</p>
+    </header>
+
+    <section id="empty" class="empty hidden">
+      <p>No session captured. Go back to an AI conversation, open the WhiteBox popup, and click <strong>Session digest</strong> first.</p>
+    </section>
+
+    <section id="meta" class="meta hidden">
+      <div><span>Captured from</span><strong id="meta-site">—</strong></div>
+      <div><span>Turns</span><strong id="meta-count">0</strong></div>
+      <div><span>URL</span><code id="meta-url">—</code></div>
+    </section>
+
+    <section id="controls" class="controls hidden">
+      <label class="row">
+        <input type="checkbox" id="show-user" checked />
+        <span>Show user turns</span>
+      </label>
+      <label class="row">
+        <input type="checkbox" id="show-assistant" checked />
+        <span>Show assistant turns</span>
+      </label>
+      <div class="actions">
+        <button id="select-none" class="secondary">Select none</button>
+        <button id="save-all" class="primary">Save selected</button>
+      </div>
+      <div class="field">
+        <label for="bulk-tags">Tags for all selected (comma-separated)</label>
+        <input type="text" id="bulk-tags" placeholder="working-style, preference" />
+        <small class="muted">Applies to every observation saved in this batch. Per-turn tag editing lands in a later build.</small>
+      </div>
+      <div class="field inline">
+        <label for="confidence">Confidence</label>
+        <select id="confidence">
+          <option value="very-low">very-low</option>
+          <option value="low">low</option>
+          <option value="medium" selected>medium</option>
+          <option value="high">high</option>
+          <option value="very-high">very-high</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="checkbox-row">
+          <input type="checkbox" id="auto-source" checked />
+          <span>For long turns (&gt;500 chars): save full text to <code>sources/</code> and use a short excerpt as the observation body</span>
+        </label>
+        <small class="muted">
+          Recommended. Keeps observations under the spec's ~500 char guideline while preserving the full content reachable via <code>source_ref:</code>. Uncheck to save full turns as observation bodies (older behavior; violates the spec's discipline rules).
+        </small>
+      </div>
+    </section>
+
+    <section id="turns" class="turns hidden"></section>
+
+    <section id="result" class="result hidden"></section>
+  </main>
+
+  <script type="module" src="digest.js"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhiteBox — Reconnect Vault</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #fafafa;
+    }
+    .card {
+      text-align: center;
+      padding: 40px;
+      max-width: 360px;
+    }
+    h1 { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+    p { font-size: 13px; color: #666; margin-bottom: 24px; line-height: 1.5; }
+    button {
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      padding: 14px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover { background: #333; }
+    .done { color: #1a6d3a; font-size: 15px; font-weight: 600; }
+    .fail { color: #a54; font-size: 13px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Reconnect vault</h1>
+    <p>Chrome needs a one-time click to re-authorize vault access after a browser restart.</p>
+    <button id="go">Reconnect</button>
+    <div id="msg"></div>
+  </div>
+  <script type="module">
+    import { loadVaultHandle, ensurePermission } from "../lib/vault-handle.js";
+
+    const btn = document.getElementById("go");
+    const msg = document.getElementById("msg");
+
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      btn.textContent = "Connecting...";
+      try {
+        const handle = await loadVaultHandle();
+        if (!handle) {
+          msg.className = "fail";
+          msg.textContent = "No vault folder saved. Open WhiteBox popup and run setup first.";
+          btn.textContent = "Reconnect";
+          btn.disabled = false;
+          return;
+        }
+        const granted = await ensurePermission(handle, "readwrite");
+        if (granted) {
+          btn.hidden = true;
+          msg.className = "done";
+          msg.textContent = "Connected. This tab will close.";
+          setTimeout(() => window.close(), 800);
+        } else {
+          msg.className = "fail";
+          msg.textContent = "Permission denied. Try again or re-pick the folder in the WhiteBox popup.";
+          btn.textContent = "Reconnect";
+          btn.disabled = false;
+        }
+      } catch (err) {
+        msg.className = "fail";
+        msg.textContent = "Error: " + (err.message || err);
+        btn.textContent = "Reconnect";
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>

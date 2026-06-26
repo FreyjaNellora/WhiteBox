@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhiteBox — Help</title>
+  <link rel="stylesheet" href="help.css" />
+</head>
+<body>
+  <nav class="side">
+    <h1>WhiteBox</h1>
+    <p class="subtitle">Help</p>
+    <ul>
+      <li><a href="#overview">What WhiteBox is</a></li>
+      <li><a href="#vault">Your vault folder</a></li>
+      <li><a href="#inject">Bootstrap injection</a></li>
+      <li><a href="#capture">Capture last response</a></li>
+      <li><a href="#digest">Session digest</a></li>
+      <li><a href="#observations">What gets saved</a></li>
+      <li><a href="#tags">Tags</a></li>
+      <li><a href="#confidence">Confidence scale</a></li>
+      <li><a href="#scopes">Scopes</a></li>
+      <li><a href="#sites">Supported sites</a></li>
+      <li><a href="#troubleshoot">Troubleshooting</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#more">More resources</a></li>
+    </ul>
+  </nav>
+
+  <main>
+    <section id="overview">
+      <h2>What WhiteBox is</h2>
+      <p>WhiteBox is a portable user-memory layer for AI agents. It lets Claude, ChatGPT, Gemini, and other AI tools you use all read from — and write to — the same set of markdown files on your own disk. You own your memory, and it travels with you across every agent.</p>
+      <p>This extension is one of three ways to connect your vault to an AI:</p>
+      <ol>
+        <li><strong>Browser extension</strong> (what you're reading about) — works on claude.ai, chatgpt.com, gemini.google.com.</li>
+        <li><strong>MCP server</strong> (<code>whitebox-mcp</code>) — works with Claude Desktop, Claude Code, Cursor, Gemini CLI.</li>
+        <li><strong>CLI</strong> (<code>whitebox paste</code>) — works anywhere you can paste text (mobile, random chat clients, API consoles).</li>
+      </ol>
+    </section>
+
+    <section id="vault">
+      <h2>Your vault folder</h2>
+      <p>Your vault is a folder on your computer that holds markdown files describing you, your preferences, and the observations agents have made about you over time. The extension reads and writes to this folder via the File System Access API, which requires you to explicitly pick the folder once.</p>
+      <p><strong>To connect a vault</strong>, click the WhiteBox icon in your toolbar → <strong>Open setup…</strong> → <strong>Choose vault folder</strong>, and select the folder.</p>
+      <p>Don't have a vault yet? Create one by running <code>whitebox init</code> in a terminal, or make any folder with an <code>AGENTS.md</code> inside it. The <a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/QUICKSTART.md" target="_blank">QUICKSTART</a> walks through the full setup.</p>
+      <p><strong>Grant lasts for the browser session.</strong> After you fully restart your browser, the permission decays and you re-grant via the same Setup page with one click.</p>
+    </section>
+
+    <section id="inject">
+      <h2>Bootstrap injection</h2>
+      <p>When you start a new conversation on a supported site and have WhiteBox enabled, the extension prepends a short block of your vault's context to your first message before it's sent. Specifically:</p>
+      <ul>
+        <li>The contents of <code>AGENTS.md</code> (instructions on how the AI should interact with your vault)</li>
+        <li>Your <code>identity.md</code> (stable facts about you)</li>
+        <li>Your <code>working-style.md</code> (how you want to be worked with)</li>
+      </ul>
+      <p>It shows up as a visible block at the top of your first message, wrapped in <code>&lt;!-- whitebox-context: start --&gt;</code> markers. Claude/ChatGPT/Gemini read that context and respond accordingly.</p>
+      <p><strong>Injection only fires on the first message of a new conversation.</strong> Subsequent messages in the same conversation don't re-inject; the context is already in the conversation history.</p>
+      <p><strong>To disable injection on a specific site</strong>, uncheck that site in the popup's "Active on" section.</p>
+    </section>
+
+    <section id="capture">
+      <h2>Capture last response</h2>
+      <p>During a conversation, when the AI says something worth remembering, click the WhiteBox icon → <strong>Capture last response</strong>. A new tab opens with a review form containing the verbatim text of the most recent assistant message.</p>
+      <p>Fill in:</p>
+      <ul>
+        <li><strong>Tags</strong> — pick from your vault's <code>tags.md</code> (suggestions show as chips) or type your own (comma-separated). New tags get flagged as <code>proposed</code> for you to curate later.</li>
+        <li><strong>Confidence</strong> — how confident you are that this observation is accurate and durable (see <a href="#confidence">Confidence scale</a>).</li>
+        <li><strong>Body</strong> — the assistant's response, already pre-filled. You can trim or edit it before saving; the body becomes the observation verbatim.</li>
+      </ul>
+      <p>Hit <strong>Save to vault</strong> and the entry appends to <code>observations/YYYY-MM.md</code> in your vault.</p>
+    </section>
+
+    <section id="digest">
+      <h2>Session digest</h2>
+      <p>Capture scales poorly if you want to save multiple moments from one conversation. For that, use <strong>Session digest…</strong> from the popup.</p>
+      <p>The digest page pulls every turn from the current conversation — both yours and the AI's — and shows them as checkbox cards. Filter by role (user / assistant), scroll through, tick the turns worth saving, set shared tags and confidence once, and hit <strong>Save selected</strong>. Each ticked turn becomes its own observation with the bulk tags.</p>
+      <p>Per-turn tagging isn't in this build; the bulk-tags model is a simplification. If it bites, the <a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/docs/BACKLOG.md" target="_blank">BACKLOG</a> has per-turn tags listed as a refinement to pick up when it matters.</p>
+    </section>
+
+    <section id="observations">
+      <h2>What gets saved — the verbatim rule</h2>
+      <p>WhiteBox's core promise is trust: every observation in your vault is traceable to a literal moment in a conversation. Agents never paraphrase, summarize, or invent. If the observation body isn't a direct quote, something's wrong.</p>
+      <p>You, the human, can annotate your vault however you want — edit observation files, add free-form notes, restructure. The verbatim rule only constrains what <em>agents</em> write on your behalf.</p>
+      <p>An example observation entry in <code>observations/2026-04.md</code>:</p>
+      <pre><code>---
+date: 2026-04-21
+source: claude.ai
+tags: [working-style, preference]
+confidence: high
+---
+
+Direct quote from the conversation, verbatim.</code></pre>
+    </section>
+
+    <section id="tags">
+      <h2>Tags</h2>
+      <p>Tags categorize observations so you (and future agents) can retrieve them by theme. Your vault's <code>tags.md</code> lists your canonical tags under <strong>Active</strong>. New tags proposed by agents or added during capture appear under <strong>Proposed</strong> until you curate them.</p>
+      <p>Common tag patterns:</p>
+      <ul>
+        <li><code>working-style</code> — how you want to be worked with.</li>
+        <li><code>preference</code> — stated likes and dislikes.</li>
+        <li><code>correction</code> — you corrected the agent on something.</li>
+        <li><code>relationship:&lt;name&gt;</code> — about a specific person.</li>
+        <li><code>project:&lt;slug&gt;</code> — about a specific project.</li>
+        <li><code>conflict</code> — observation contradicts an existing stable fact.</li>
+      </ul>
+      <p>The full canonical tag registry is at <a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/spec/tags-canonical-v1.md" target="_blank">spec/tags-canonical-v1.md</a>.</p>
+    </section>
+
+    <section id="confidence">
+      <h2>Confidence scale</h2>
+      <p>Five grades, from uncertain to certain:</p>
+      <ul>
+        <li><strong>very-low</strong> — fleeting impression, weak evidence, might not hold.</li>
+        <li><strong>low</strong> — possibly true, one data point, matches a pattern.</li>
+        <li><strong>medium</strong> — probably true, consistent across moments.</li>
+        <li><strong>high</strong> — clearly stated by the user or observed repeatedly.</li>
+        <li><strong>very-high</strong> — explicitly confirmed, identity-level claim.</li>
+      </ul>
+      <p>Confidence matters for future retrieval: higher-confidence observations are weighted more in bootstrap injection (planned), and low-confidence ones age out faster (planned). For now, just be honest about how sure you are.</p>
+    </section>
+
+    <section id="scopes">
+      <h2>Scopes (advanced)</h2>
+      <p>If your vault has a <code>scopes.md</code> file and you set an active scope in the popup, WhiteBox will only read and write files inside the matching scope. Use this to keep sensitive observations out of sessions where you don't want them (e.g., a coding session shouldn't have access to your personal journal).</p>
+      <p>Scope configuration is manual for now — create the <code>scopes.md</code> file in your vault by hand and organize your vault into folders that match scope definitions. See the schema spec for format.</p>
+    </section>
+
+    <section id="sites">
+      <h2>Supported sites</h2>
+      <p>Right now WhiteBox's browser extension works on:</p>
+      <ul>
+        <li><strong>claude.ai</strong></li>
+        <li><strong>chatgpt.com</strong> (and the legacy <strong>chat.openai.com</strong>)</li>
+        <li><strong>gemini.google.com</strong></li>
+      </ul>
+      <p>For other sites, use the CLI's <code>whitebox paste</code> command to copy your vault context to the clipboard and paste into any chat manually. For desktop apps that support MCP (Claude Desktop, Claude Code, Cursor, Gemini CLI), use the MCP server instead.</p>
+    </section>
+
+    <section id="troubleshoot">
+      <h2>Troubleshooting</h2>
+
+      <h3>"Vault not accessible" or no injection log</h3>
+      <p>Grant probably expired after a browser restart. Click the WhiteBox icon → <strong>Open setup…</strong> → <strong>Re-grant access</strong>.</p>
+
+      <h3>Injection doesn't fire on first message</h3>
+      <p>Usually means the site's DOM structure changed and our composer selector didn't match. Open DevTools (F12) → Console. Look for a line like <code>[whitebox] &lt;site&gt; content script v0.3 live</code> — if that's missing, the extension didn't load. If it's there but no <code>injected N chars</code> log, the composer selector needs updating. Report it as a GitHub issue or PR a selector fix in <code>src/content/&lt;site&gt;.js</code>.</p>
+
+      <h3>Capture extracts the wrong text or nothing</h3>
+      <p>DOM selector miss. Same as above: Console output + GitHub issue.</p>
+
+      <h3>Save fails on the propose or digest page</h3>
+      <p>Check the service worker console: <code>chrome://extensions</code> → WhiteBox card → <strong>Inspect views: service worker</strong>. The specific error will point at the file to fix. Often it's a permission re-grant or a path issue.</p>
+
+      <h3>Developer-mode warning on every Chrome launch</h3>
+      <p>Chrome nags because the extension isn't from the Web Store. Safe to dismiss. Goes away once we publish to the Web Store (roadmap item).</p>
+    </section>
+
+    <section id="privacy">
+      <h2>Privacy</h2>
+      <p>This extension never phones home. No analytics, no telemetry, no external requests beyond the content scripts running on the three AI sites you've enabled. Your vault is on your disk; the extension reads and writes to it via the File System Access API, and nothing leaves your machine without your explicit action.</p>
+      <p>When you use <strong>Capture</strong> or <strong>Session digest</strong>, you're taking DOM text that's already on your screen (that you sent or received in a conversation with an AI) and saving it to your local disk. No third party sees it.</p>
+      <p>Syncing your vault across devices is your choice: git, Syncthing, iCloud, Obsidian Sync, Dropbox — pick one (don't stack them, conflicts). The extension is not involved in sync.</p>
+    </section>
+
+    <section id="more">
+      <h2>More resources</h2>
+      <ul>
+        <li><a href="https://github.com/FreyjaNellora/WhiteBox" target="_blank">Project repo</a></li>
+        <li><a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/QUICKSTART.md" target="_blank">QUICKSTART — end-to-end setup</a></li>
+        <li><a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/docs/EDITOR_GUIDE.md" target="_blank">Using your vault with Obsidian / VS Code / Typora / plain text</a></li>
+        <li><a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/docs/COMPARISON.md" target="_blank">WhiteBox vs mem0 / Letta / ChatGPT Memory / Claude Memory / Rewind</a></li>
+        <li><a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/CONTRIBUTING.md" target="_blank">Contributing to WhiteBox</a></li>
+        <li><a href="https://github.com/FreyjaNellora/WhiteBox/issues" target="_blank">Report an issue</a></li>
+      </ul>
+      <p class="version-note">Extension v0.3. Help last updated: 2026-04-21.</p>
+    </section>
+  </main>
+</body>
+</html>

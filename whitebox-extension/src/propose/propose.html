@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhiteBox — Propose observation</title>
+  <link rel="stylesheet" href="propose.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Propose observation</h1>
+      <p class="subtitle">Review, edit, and append to your vault's observations log.</p>
+    </header>
+
+    <section id="empty" class="empty hidden">
+      <p>No pending capture found. Go back to an AI site, open the WhiteBox popup, and click <strong>Capture last response</strong> first.</p>
+    </section>
+
+    <section id="form" class="form hidden">
+
+      <!-- Long-capture banner: appears only when the captured text exceeds
+           the spec's ~500 char "verbatim" limit. -->
+      <div id="long-capture-banner" class="long-banner hidden">
+        <div class="long-banner__title">⚠ This capture is long (<span id="char-count">0</span> chars)</div>
+        <p class="long-banner__body">
+          The WhiteBox spec says observation bodies should be verbatim quotes under <strong>~500 chars</strong>. Longer content goes to <code>sources/&lt;file&gt;.md</code> and the observation references it via <code>source_ref:</code>. This keeps active memory dense and inspectable.
+        </p>
+        <p class="long-banner__body">
+          Below: extract a key passage into the observation body, and (recommended) tick the box to save the full capture as a source file the agent can read on demand.
+        </p>
+      </div>
+
+      <!-- Reference panel: read-only view of the full captured text.
+           Hidden when capture is short (≤500 chars). -->
+      <div id="reference-panel" class="reference-panel hidden">
+        <div class="reference-panel__header">
+          <label>Full captured text (reference, read-only)</label>
+          <button type="button" id="copy-all-to-body" class="link-btn">Copy all to body ↓</button>
+        </div>
+        <textarea id="full-text" readonly rows="10"></textarea>
+      </div>
+
+      <div class="field">
+        <label for="source">Source</label>
+        <input type="text" id="source" />
+        <small class="muted">The agent or model that produced this content. Auto-filled from the site you captured from.</small>
+      </div>
+
+      <div class="field">
+        <label for="body">Observation body <span id="body-hint" class="muted body-hint"></span></label>
+        <textarea id="body" rows="6"></textarea>
+        <small class="muted">Aim for under ~500 chars. This is the verbatim quote the vault remembers; the agent reads this every session.</small>
+      </div>
+
+      <!-- Source-file companion: appears when capture is long. -->
+      <div id="save-source-section" class="field source-section hidden">
+        <label class="checkbox-row">
+          <input type="checkbox" id="save-as-source" checked />
+          <span>Save full text as <code>sources/&lt;file&gt;.md</code> and reference it via <code>source_ref:</code> in this observation</span>
+        </label>
+        <small class="muted">Recommended for long captures. The agent reads it on demand without bloating the orientation pack.</small>
+      </div>
+
+      <div class="field">
+        <label for="tags">Tags (comma-separated)</label>
+        <input type="text" id="tags" placeholder="working-style, preference" />
+        <div id="tag-suggestions" class="tag-suggestions"></div>
+        <small class="muted">Prefer tags from your vault's <code>tags.md</code>. New tags you type here will be added to the file with <code>status: proposed</code> for you to curate later.</small>
+      </div>
+
+      <div class="field inline">
+        <label for="confidence">Confidence</label>
+        <select id="confidence">
+          <option value="very-low">very-low</option>
+          <option value="low">low</option>
+          <option value="medium" selected>medium</option>
+          <option value="high">high</option>
+          <option value="very-high">very-high</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="context">Context (optional)</label>
+        <input type="text" id="context" placeholder="e.g. coding-conversations" />
+        <small class="muted">Situational scope label. Use when this observation only applies in a specific context (would otherwise look like a conflict with general behavior).</small>
+      </div>
+
+      <div class="meta">
+        <div class="meta-row"><span>Captured from</span><span id="meta-site">—</span></div>
+        <div class="meta-row"><span>Conversation URL</span><span id="meta-url">—</span></div>
+        <div class="meta-row"><span>Captured at</span><span id="meta-time">—</span></div>
+      </div>
+
+      <div class="actions">
+        <button id="save" class="primary">Save to vault</button>
+        <button id="discard" class="secondary">Discard</button>
+        <span id="result"></span>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="propose.js"></script>
+</body>
+</html>

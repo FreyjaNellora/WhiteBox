@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhiteBox setup</title>
+  <link rel="stylesheet" href="setup.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <h1>WhiteBox</h1>
+      <p class="subtitle">Setup wizard</p>
+      <ol id="step-indicator" class="step-indicator">
+        <li data-step="welcome" class="active">1. Welcome</li>
+        <li data-step="vault">2. Vault</li>
+        <li data-step="identity">3. About you</li>
+        <li data-step="working-style">4. Working style</li>
+        <li data-step="style">5. Look & feel</li>
+        <li data-step="done">6. Done</li>
+      </ol>
+    </header>
+
+    <!-- ─── Step 1: Welcome ─────────────────────────────────────────── -->
+    <section id="step-welcome" class="step active">
+      <h2>Welcome</h2>
+      <p>
+        WhiteBox gives you portable user memory for AI agents. Your memory lives as plain markdown files on your disk that any AI — Claude, ChatGPT, Gemini — can read and write to. No vendor lock-in, no cloud syncing, no account required.
+      </p>
+      <p>
+        This wizard will walk you through five quick steps. Should take about three minutes. Skip whatever you don't want to fill in — you can edit everything later in any text editor.
+      </p>
+      <p class="muted">
+        Nothing leaves your machine. The browser asks for permission to read/write one folder you choose; that's the only thing that ever happens.
+      </p>
+      <div class="actions">
+        <button class="primary" data-goto="vault">Get started →</button>
+      </div>
+    </section>
+
+    <!-- ─── Step 2: Vault ───────────────────────────────────────────── -->
+    <section id="step-vault" class="step" hidden>
+      <h2>Pick a folder for your vault</h2>
+      <p>
+        WhiteBox needs one folder on your disk to be your vault — where your identity, preferences, and observations get stored. You can pick an empty folder; we'll set it up for you.
+      </p>
+      <p class="muted">
+        Suggested location: <code>~/whitebox-vault</code> (or anywhere in your Documents folder). Avoid synced cloud folders if you can — local-only is the safest default.
+      </p>
+      <div class="actions">
+        <button id="pick-folder-btn" class="primary">Choose folder…</button>
+      </div>
+      <div id="vault-pick-result" class="result-line" hidden></div>
+      <div id="vault-pick-warn" class="warn-line" hidden></div>
+      <div class="actions" id="vault-actions" hidden>
+        <button class="secondary" data-goto="welcome">← Back</button>
+        <button class="primary" data-goto="identity" id="vault-continue">Continue →</button>
+      </div>
+    </section>
+
+    <!-- ─── Step 3: Identity ────────────────────────────────────────── -->
+    <section id="step-identity" class="step" hidden>
+      <h2>About you</h2>
+      <p>
+        These are the stable facts agents will read first. Keep it short — a sentence or two each. You can edit anytime.
+      </p>
+      <label class="field">
+        <span>What should agents call you?</span>
+        <input type="text" id="ident-name" placeholder="e.g. Alex / Dr. Reyes / just 'they/them is fine'" />
+      </label>
+      <label class="field">
+        <span>What do you do?</span>
+        <input type="text" id="ident-occupation" placeholder="e.g. backend engineer at a fintech / writer + amateur potter / retired teacher" />
+      </label>
+      <label class="field">
+        <span>Where are you based? (optional)</span>
+        <input type="text" id="ident-location" placeholder="e.g. Toronto / rural Vermont / EU timezone" />
+      </label>
+      <label class="field">
+        <span>Anything important agents should know off the top? (optional)</span>
+        <textarea id="ident-extra" rows="3" placeholder="e.g. dyslexic — keep formatting clean; running an active research project on language models; recently took a sabbatical from X"></textarea>
+      </label>
+      <div class="actions">
+        <button class="secondary" data-goto="vault">← Back</button>
+        <button class="primary" data-goto="working-style" id="identity-continue">Continue →</button>
+      </div>
+    </section>
+
+    <!-- ─── Step 4: Working style ───────────────────────────────────── -->
+    <section id="step-working-style" class="step" hidden>
+      <h2>How do you want agents to work with you?</h2>
+      <p>
+        These tune how agents respond. Pick what fits — or skip and add detail later.
+      </p>
+      <div class="field">
+        <span>Pace</span>
+        <div class="radio-group">
+          <label><input type="radio" name="ws-pace" value="step" /> One step at a time</label>
+          <label><input type="radio" name="ws-pace" value="full" /> Give me the full plan up front</label>
+          <label><input type="radio" name="ws-pace" value="adaptive" checked /> Let me steer per task</label>
+        </div>
+      </div>
+      <div class="field">
+        <span>Register</span>
+        <div class="radio-group">
+          <label><input type="radio" name="ws-register" value="terse" /> Direct and terse, no softening</label>
+          <label><input type="radio" name="ws-register" value="warm" /> Warm and conversational</label>
+          <label><input type="radio" name="ws-register" value="default" checked /> Default, no preference</label>
+        </div>
+      </div>
+      <div class="field">
+        <span>Pushback</span>
+        <div class="radio-group">
+          <label><input type="radio" name="ws-pushback" value="strong" /> Push back hard when you disagree</label>
+          <label><input type="radio" name="ws-pushback" value="gentle" /> Note disagreements but defer to me</label>
+          <label><input type="radio" name="ws-pushback" value="default" checked /> Default behavior</label>
+        </div>
+      </div>
+      <label class="field">
+        <span>Anything you find particularly unhelpful? (optional)</span>
+        <textarea id="ws-unhelpful" rows="2" placeholder="e.g. hedging, sandwich feedback, mirroring my vocabulary, 'I'd be happy to' opener"></textarea>
+      </label>
+      <div class="actions">
+        <button class="secondary" data-goto="identity">← Back</button>
+        <button class="primary" data-goto="style" id="ws-continue">Continue →</button>
+      </div>
+    </section>
+
+    <!-- ─── Step 5: Style preset ────────────────────────────────────── -->
+    <section id="step-style" class="step" hidden>
+      <h2>Pick a look</h2>
+      <p>How dense should the WhiteBox UI be? You can change this anytime.</p>
+      <div class="style-cards">
+        <label class="style-card">
+          <input type="radio" name="ui-style" value="office" checked />
+          <div class="style-card__body">
+            <div class="style-card__title">Office</div>
+            <div class="style-card__sub">Calm, light, low-density.</div>
+            <div class="style-card__hint">Default. Stays out of your way. Save toasts only.</div>
+          </div>
+        </label>
+        <label class="style-card">
+          <input type="radio" name="ui-style" value="engineer" />
+          <div class="style-card__body">
+            <div class="style-card__title">Engineer</div>
+            <div class="style-card__sub">Info-dense, dark, CLI hints.</div>
+            <div class="style-card__hint">Slim persistent HUD. Shows paths, sources, exit codes.</div>
+          </div>
+        </label>
+        <label class="style-card">
+          <input type="radio" name="ui-style" value="gamer-modder" />
+          <div class="style-card__body">
+            <div class="style-card__title">Gamer / Modder</div>
+            <div class="style-card__sub">Always-on HUD, dark, advanced.</div>
+            <div class="style-card__hint">Expanded HUD with state badges, advanced actions visible.</div>
+          </div>
+        </label>
+      </div>
+      <div class="actions">
+        <button class="secondary" data-goto="working-style">← Back</button>
+        <button class="primary" data-goto="done" id="style-continue">Finish setup →</button>
+      </div>
+    </section>
+
+    <!-- ─── Step 6: Done ────────────────────────────────────────────── -->
+    <section id="step-done" class="step" hidden>
+      <h2>You're ready</h2>
+      <p>
+        Vault is set up, identity and working style written, agents will pick them up automatically. Try it now:
+      </p>
+      <ol class="next-steps">
+        <li>Open <a href="https://claude.ai/new" target="_blank" rel="noopener">claude.ai/new</a> in a new tab.</li>
+        <li>Send any message. The first one of a fresh chat will silently include your vault context.</li>
+        <li>Ask Claude <em>"what do you actually know about me from the vault?"</em> — it should answer with what you just wrote.</li>
+      </ol>
+      <p class="muted">
+        Want even more — Claude Desktop / Code / Cursor integration via MCP? See <a href="https://github.com/FreyjaNellora/WhiteBox#quick-install" target="_blank" rel="noopener">the GitHub repo</a> for the MCP server setup.
+      </p>
+      <div class="actions">
+        <button class="primary" id="close-tab-btn">Close this tab</button>
+        <button class="secondary" data-goto="vault">← Re-do setup</button>
+      </div>
+    </section>
+
+    <footer>
+      <p class="muted small">WhiteBox v1.0.0-prealpha.6 — setup wizard</p>
+    </footer>
+  </main>
+
+  <script type="module" src="setup.js"></script>
+</body>
+</html>

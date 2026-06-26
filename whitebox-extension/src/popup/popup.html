@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>WhiteBox</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>WhiteBox</h1>
+    <span id="status" class="status off">off</span>
+    <span id="danger-badge" class="danger-badge" hidden title="Click for details">⚠ DANGER</span>
+  </header>
+
+  <section id="lock-section" class="lock-block" data-wb-help="vault-lock">
+    <h2>Session gate</h2>
+    <small class="note" style="color:#666;">
+      This is a UX gate, not encryption. Your vault files remain plaintext on disk.
+    </small>
+    <div id="lock-summary" class="lock-summary">
+      <span class="muted">No passphrase set. Session is always open.</span>
+    </div>
+    <div id="lock-actions" class="actions">
+      <button id="set-passphrase-btn" class="primary">Set passphrase…</button>
+      <button id="unlock-btn" class="primary" hidden>Unlock</button>
+      <button id="lock-now-btn" class="secondary" hidden>Lock now</button>
+    </div>
+
+    <details id="lock-triggers-details">
+      <summary>Auto-lock triggers</summary>
+      <small class="note">
+        Each unchecked safety is a deliberate risk reduction. Toggling one off shows the danger it adds.
+      </small>
+      <label class="row toggle">
+        <span>Gate when I lock my screen</span>
+        <input type="checkbox" id="trig-screen-lock" />
+      </label>
+      <label class="row toggle">
+        <span>Gate after idle (minutes)</span>
+        <input type="checkbox" id="trig-idle" />
+      </label>
+      <label class="row stacked" id="trig-idle-mins-row" hidden>
+        <span>Idle minutes</span>
+        <select id="trig-idle-mins">
+          <option value="5">5</option>
+          <option value="15">15</option>
+          <option value="30" selected>30</option>
+          <option value="60">60</option>
+        </select>
+      </label>
+      <label class="row toggle">
+        <span>Gate when all WhiteBox tabs close</span>
+        <input type="checkbox" id="trig-tab-close" />
+      </label>
+      <label class="row toggle danger-toggle">
+        <span>⚠ Remember unlock across browser restarts</span>
+        <input type="checkbox" id="trig-remember-restart" />
+      </label>
+    </details>
+  </section>
+
+  <section id="bypass-section" class="bypass-block" data-wb-help="agent-bypass">
+    <h2>Agent bypass while gated</h2>
+    <small class="note">
+      What the agent can still do when the session is gated from your perspective. Default: nothing.
+    </small>
+    <label class="row stacked">
+      <span>Bypass tier</span>
+      <select id="bypass-tier">
+        <option value="none">none — agent fully blocked while locked</option>
+        <option value="reads-only">reads-only — agent can fetch + scope + grep, no writes</option>
+        <option value="reads-and-safe-writes">reads-and-safe-writes — above + low/medium-confidence saves</option>
+        <option value="full-bypass">⚠ full-bypass — agent has full latitude even when locked</option>
+      </select>
+    </label>
+    <label class="row stacked" id="bypass-expire-row" hidden>
+      <span>Auto-revert to "none" after</span>
+      <select id="bypass-expire">
+        <option value="">never (manual only)</option>
+        <option value="1">1 hour</option>
+        <option value="4">4 hours</option>
+        <option value="8">8 hours</option>
+        <option value="24">24 hours</option>
+      </select>
+    </label>
+    <div id="bypass-expires-at" class="muted" hidden></div>
+  </section>
+
+  <section id="safety-section" class="safety-block" data-wb-help="audit-log">
+    <h2>Safety</h2>
+    <label class="row stacked" data-wb-help="rate-limit">
+      <span>Autonomous-save cap (per browser session, optional)</span>
+      <select id="rate-limit">
+        <option value="0" selected>unlimited (trust the agent)</option>
+        <option value="5">5</option>
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+      </select>
+      <small id="rate-used-display" class="muted"></small>
+      <small>Default unlimited. The agent manages its own loop; set a cap only if a specific source has shown runaway behavior.</small>
+    </label>
+    <label class="row stacked">
+      <span>Audit log verbosity</span>
+      <select id="audit-verbosity">
+        <option value="writes" selected>writes only</option>
+        <option value="all">writes + reads</option>
+      </select>
+      <small>Logged to <code>audit/YYYY-MM-DD.md</code> in your vault.</small>
+    </label>
+  </section>
+
+
+  <section id="first-run" class="first-run" hidden>
+    <h2>Pick a style</h2>
+    <p class="first-run-intro">
+      How dense do you want the UI? You can change this later in the
+      Style row below.
+    </p>
+    <div class="style-grid">
+      <label class="style-card">
+        <input type="radio" name="first-run-style" value="office" checked />
+        <div class="style-card__body">
+          <div class="style-card__title">Office</div>
+          <div class="style-card__sub">Calm, light, low-density.</div>
+          <div class="style-card__hint">Default. Stays out of your way.</div>
+        </div>
+      </label>
+      <label class="style-card">
+        <input type="radio" name="first-run-style" value="engineer" />
+        <div class="style-card__body">
+          <div class="style-card__title">Engineer</div>
+          <div class="style-card__sub">Info-dense, dark, CLI hints.</div>
+          <div class="style-card__hint">Shows paths, sources, exit codes.</div>
+        </div>
+      </label>
+      <label class="style-card">
+        <input type="radio" name="first-run-style" value="gamer-modder" />
+        <div class="style-card__body">
+          <div class="style-card__title">Gamer / Modder</div>
+          <div class="style-card__sub">Always-on HUD, dark, advanced.</div>
+          <div class="style-card__hint">Floating overlay on AI tabs.</div>
+        </div>
+      </label>
+    </div>
+    <div class="actions">
+      <button id="first-run-confirm" class="primary">Use this style</button>
+      <button id="first-run-skip" class="secondary">Skip for now</button>
+    </div>
+  </section>
+
+  <section class="vault-block">
+    <h2>Vault</h2>
+    <div id="vault-summary" class="vault-summary">
+      <span class="muted">No vault folder granted yet.</span>
+    </div>
+    <div class="actions">
+      <button id="grant-vault" class="primary">Open setup…</button>
+      <button id="clear-vault" class="secondary" hidden>Clear</button>
+    </div>
+    <small class="note">
+      Setup opens in a new tab because the browser's folder picker closes this popup. Choose your vault folder there; you'll only need to do it once per browser session.
+    </small>
+  </section>
+
+  <section>
+    <label class="row toggle">
+      <span>Enable WhiteBox</span>
+      <input type="checkbox" id="enabled" />
+    </label>
+    <label class="row stacked">
+      <span>Active scope (optional)</span>
+      <input type="text" id="scope" placeholder="leave blank for entire vault" />
+      <small>Matches a scope name from your vault's <code>scopes.md</code>.</small>
+    </label>
+    <label class="row stacked" data-wb-help="style-presets">
+      <span>Style</span>
+      <select id="style">
+        <option value="office">Office — calm, light, low-density</option>
+        <option value="engineer">Engineer — info-dense, dark, CLI hints</option>
+        <option value="gamer-modder">Gamer / Modder — always-on HUD, dark</option>
+      </select>
+      <small>Affects HUD density and theme. Change anytime.</small>
+    </label>
+  </section>
+
+  <section>
+    <h2>Active on</h2>
+    <label class="row toggle"><span>claude.ai</span><input type="checkbox" id="site-claudeAi" /></label>
+    <label class="row toggle"><span>chatgpt.com</span><input type="checkbox" id="site-chatgpt" /></label>
+    <label class="row toggle"><span>gemini.google.com</span><input type="checkbox" id="site-gemini" /></label>
+  </section>
+
+  <section data-wb-help="passive-log">
+    <h2>Passive log</h2>
+    <label class="row toggle">
+      <span>Auto-log conversations</span>
+      <input type="checkbox" id="passive-log" />
+    </label>
+    <small class="note">
+      When on, full conversation transcripts are written to
+      <code>conversations/YYYY-MM-DD/&lt;id&gt;-part-N.md</code> in 40K chunks.
+      Off by default. Active memory (observations) is independent.
+    </small>
+  </section>
+
+  <section class="actions autosave-row">
+    <small class="autosave-hint">Changes save automatically.</small>
+    <span id="saved-indicator" hidden>saved.</span>
+    <button id="save" class="secondary" hidden>Save settings</button>
+  </section>
+
+  <section class="capture-block">
+    <h2>Capture</h2>
+    <button id="capture" class="secondary full">Capture last response</button>
+    <button id="digest" class="secondary full" style="margin-top:6px;">Session digest…</button>
+    <small class="note">Capture grabs the most recent assistant reply. Session digest pulls the full conversation so you can pick and save multiple moments at once.</small>
+    <div id="capture-status" class="muted" hidden></div>
+  </section>
+
+  <section class="uninstall-block">
+    <h2>Reset / uninstall</h2>
+    <p class="uninstall-intro">
+      Clears all WhiteBox extension state — vault grant, settings, lock state, passphrase hash, danger toggles, bypass tier, conversation cache. <strong>Your vault folder on disk is left completely untouched.</strong> Files, observations, audit log, conversations, identity — all stay where they are. You can reconnect them later or open them in any text editor.
+    </p>
+    <button id="reset-extension-state" class="secondary full">Reset extension state…</button>
+    <small class="note">
+      To fully uninstall: do this, then open <code>chrome://extensions</code> and remove WhiteBox. See <a href="https://github.com/FreyjaNellora/WhiteBox/blob/main/UNINSTALL.md" target="_blank" rel="noopener">UNINSTALL.md</a> on GitHub for the complete walkthrough including MCP server cleanup.
+    </small>
+  </section>
+
+  <section class="diagnostics-block">
+    <h2>Diagnostics</h2>
+    <div class="actions">
+      <button id="copy-diagnostics" class="secondary full">Copy diagnostics to clipboard</button>
+    </div>
+    <small class="note">
+      Copies environment info and recent errors for bug reports.
+      Paste into a <a href="https://github.com/FreyjaNellora/WhiteBox/issues" target="_blank" rel="noopener">GitHub issue</a>.
+    </small>
+  </section>
+
+  <footer>
+    <div class="footer-row">
+      <a id="help-link" href="#">Help</a>
+      <small class="version-note">v1.0.0-prealpha.6</small>
+    </div>
+  </footer>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
