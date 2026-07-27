@@ -6,7 +6,8 @@ the brain*.
 
 The long-range direction treats the user-owned substrate as the coordination hub of a **blackboard
 architecture**: independent agents contribute to and draw from a shared, audited store, with
-routing, consolidation, and review layered around it. The interesting research questions are about
+routing, consolidation, and review layered around it (the routing/review layer is sketched in
+[dwarf-forge.md](dwarf-forge.md)). The interesting research questions are about
 *governance and verification* of such a system — how independent, possibly non-aligned components
 can be composed so that the whole remains trustworthy and its failures are contained and
 observable — rather than about raw capability. We hold this direction honestly: it is a hypothesis
