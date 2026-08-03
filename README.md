@@ -1,8 +1,26 @@
 # WhiteBox
 
+> **Mission.** WhiteBox exists so the durable model an AI builds of *you* — your identity, memory,
+> and working style — lives on hardware **you own and control**, never on someone else's server. As
+> AI learns more about people, and a neural-and-affective data economy emerges (consumer EEG,
+> neuromarketing), the most intimate class of personal data risks being harvested by default.
+> WhiteBox keeps it **sovereign**: local, transparent, auditable, and yours to override or delete.
+>
+> Because that data is so sensitive, security is the point, not a feature. WhiteBox is a multi-agent
+> system held to an adversarial standard — we red- and blue-team our own defenses rather than assume
+> they work. See [SECURITY.md](SECURITY.md) and [docs/motivation.md](docs/motivation.md).
+
+**Goals**
+- **Data sovereignty** — you own the disk; nothing requires uploading the model of you.
+- **Transparency** — plain text, a published schema, every change audited; no hidden model of you.
+- **User authority** — agents propose, you veto; anything inferred about you is tagged and rejectable.
+- **Proven, not assumed, security** — defenses verified adversarially, because the data demands it.
+
+---
+
 **A portable, transparent memory you own — plain markdown files on your disk that every AI you use can read and write.** One identity across Claude, ChatGPT, Gemini, Cursor, Kimi, and anything else that speaks the spec. No black-box memory, no vendor lock-in, no model of you that you can't open in a text editor.
 
-> **Status:** `v1.0.0-prealpha` — design feature-complete and audited. Expect iteration; not yet validated by external users.
+> **Status:** `v1.0.0-prealpha` — design feature-complete and internally reviewed; independent external validation still pending. Expect iteration; not yet validated by external users.
 
 **Pick your path:**
 - 🟢 **The essentials** (your memory + your favorite AI) → do [Part A](#part-a-whitebox-memory) + [Part B](#part-b-connect-your-ai). ~15 minutes.
@@ -260,7 +278,8 @@ The wedge: the **only** project centered on multi-agent coordination over a sing
 ---
 
 ## Going deeper
-- [QUICKSTART.md](QUICKSTART.md) — the original linear walkthrough (also AI-pasteable)- [spec/WHITEBOX_v1.md](spec/WHITEBOX_v1.md) — the schema · [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md)
+- **Why & how we protect it:** [SECURITY.md](SECURITY.md) · [docs/threat-model.md](docs/threat-model.md) · [docs/motivation.md](docs/motivation.md) · [docs/research-direction.md](docs/research-direction.md)
+- [QUICKSTART.md](QUICKSTART.md) — the original linear walkthrough (also AI-pasteable) · [spec/WHITEBOX_v1.md](spec/WHITEBOX_v1.md) — the schema · [CONTRIBUTING.md](CONTRIBUTING.md) · [CHANGELOG.md](CHANGELOG.md)
 
 ## What's in this repo
 `whitebox-shared/` core library · `whitebox-mcp/` the MCP server · `whitebox-cli/` the CLI · `whitebox-extension/` the browser extension · `spec/` the schema · `vault-example/` a reference vault · `claude-code-skills/` the Claude Code skill.
@@ -268,3 +287,7 @@ The wedge: the **only** project centered on multi-agent coordination over a sing
 ---
 
 Built in the open. **MIT.** Not yet validated by external users — first testers wanted.
+
+---
+
+*It's called WhiteBox because it's open source and yours to change and alter as you deem fit — the opposite of a black box: nothing hidden inside.*

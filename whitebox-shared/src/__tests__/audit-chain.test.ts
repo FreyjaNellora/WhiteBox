@@ -311,7 +311,7 @@ describe("cross-language canonical JSON", () => {
   it("leaves colon sequences inside string keys and values intact", () => {
     const obj = {
       note: "ratio: 1:2, msg: ok",
-      by: 'user: "nate"',
+      by: 'user: "alex"',
       'odd": key': "v: w",
     };
     const out = canonicalJson(obj);
@@ -319,7 +319,7 @@ describe("cross-language canonical JSON", () => {
     // first ": " it found anywhere in the serialized output).
     expect(JSON.parse(out)).toEqual(obj);
     expect(out).toBe(
-      '{"by":"user: \\"nate\\"","note":"ratio: 1:2, msg: ok","odd\\": key":"v: w"}',
+      '{"by":"user: \\"alex\\"","note":"ratio: 1:2, msg: ok","odd\\": key":"v: w"}',
     );
   });
 
@@ -338,9 +338,8 @@ describe("cross-language canonical JSON", () => {
 
   // Fixtures generated with CPython 3.11.9:
   //   json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-  // — the exact call ChatBox's audit_log.py canonical_json() makes. The
-  // planned cross-chain reconciler depends on both languages producing
-  // identical bytes for these payloads.
+  // These vectors pin our canonical JSON to CPython's output byte-for-byte, so
+  // an audit chain stays verifiable across language implementations.
   it("matches CPython output byte-for-byte on shared vectors", () => {
     const vectors: Array<[Record<string, unknown>, string]> = [
       [{ event: "TEST", seq: 0 }, '{"event":"TEST","seq":0}'],
@@ -350,8 +349,8 @@ describe("cross-language canonical JSON", () => {
       ],
       [{ note: "héllo — ünïcode ✓" }, '{"note":"héllo — ünïcode ✓"}'],
       [
-        { by: 'user: "nate"', note: "ratio: 1:2, msg: ok" },
-        '{"by":"user: \\"nate\\"","note":"ratio: 1:2, msg: ok"}',
+        { by: 'user: "alex"', note: "ratio: 1:2, msg: ok" },
+        '{"by":"user: \\"alex\\"","note":"ratio: 1:2, msg: ok"}',
       ],
       [{ ts: 1234567890.5 }, '{"ts":1234567890.5}'],
       [{ ts: 1718000000.123456 }, '{"ts":1718000000.123456}'],
@@ -370,8 +369,8 @@ describe("cross-language canonical JSON", () => {
     // Consequence: a chain written by Python with integral-float fields
     // will NOT verify from TS (and vice versa) because verification
     // re-serializes the parsed payload. Same-language verification is
-    // unaffected. The reconciler (MERGE_PLAN/baseline) must normalize
-    // numbers or pin a shared formatting rule before cross-verifying.
+    // unaffected. Cross-language use must normalize numbers or pin a
+    // shared formatting rule.
     expect(canonicalJson({ ts: 1.0 })).toBe('{"ts":1}');
     expect(canonicalJson({ ts: 1.0 })).not.toBe('{"ts":1.0}');
   });

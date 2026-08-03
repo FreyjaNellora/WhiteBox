@@ -42,6 +42,7 @@ vault-example/proposed/
 
 # Local agent/AI tooling state and artifacts
 .claude/
+.kimi/
 agent_comms.jsonl*
 kimi-export-*.md
 bicameral_mind*.md

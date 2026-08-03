@@ -1,11 +1,11 @@
 /**
- * Hash-chained audit log — ported from ChatBox's `audit_log.py` to TypeScript.
+ * Hash-chained audit log.
  *
  * Each line is a JSON object with a SHA-256 hash chain linking it to the
  * previous entry. A lightweight checkpoint file stores the latest sequence
  * number and hash for fast verification.
  *
- * Design properties (matching ChatBox v1.5):
+ * Design properties:
  *   - Canonical JSON: sorted keys, minimal separators, no ASCII escape
  *   - Append-only writes (no rewrite, no deletion)
  *   - Atomic checkpoint writes (temp + rename)
@@ -293,7 +293,7 @@ export class AuditChain {
     const canonicalLine = canonicalJson(entry) + "\n";
 
     // Append + fsync so an acknowledged entry survives a crash
-    // (UNIFIED_SECURITY_BASELINE: flush + fsync on every audit write).
+    // (flush + fsync on every audit write, for crash durability).
     const fh = await fs.open(this.logPath, "a");
     try {
       await fh.appendFile(canonicalLine, "utf-8");

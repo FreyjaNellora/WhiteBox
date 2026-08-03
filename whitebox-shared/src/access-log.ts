@@ -8,7 +8,7 @@
  * search ranker uses to boost frequently-fetched items.
  *
  * Design properties:
- *   - Hash-chained JSONL (matches ChatBox audit_log.py v1.5)
+ *   - Hash-chained JSONL (tamper-evident, append-only)
  *   - Plain text, grep-able
  *   - Identifier is `<vault-relative-file>#<position>` — position is the
  *     index of the observation within its file. Stable as long as the file

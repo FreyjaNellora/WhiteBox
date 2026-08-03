@@ -24,12 +24,12 @@ describe("MEM-1 SSE guards", () => {
   });
 
   describe("Host-header allow-list (DNS-rebinding defense)", () => {
-    const allowed = buildAllowedHosts("127.0.0.1", 8787, "chatbox.local:8787");
+    const allowed = buildAllowedHosts("127.0.0.1", 8787, "myhub.local:8787");
 
     it("accepts loopback + configured hosts (case-insensitive)", () => {
       expect(isHostAllowed("127.0.0.1:8787", allowed)).toBe(true);
       expect(isHostAllowed("localhost:8787", allowed)).toBe(true);
-      expect(isHostAllowed("ChatBox.local:8787", allowed)).toBe(true);
+      expect(isHostAllowed("MyHub.local:8787", allowed)).toBe(true);
     });
     it("rejects a rebound/unknown Host", () => {
       expect(isHostAllowed("evil.example.com", allowed)).toBe(false);
