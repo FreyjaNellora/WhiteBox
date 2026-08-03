@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sovereign Search · Live Events</title>
+<style>
+  :root{ --bg:#0f1115; --surface:#161922; --surface2:#1c2028; --line:#262b36;
+    --text:#e7e9f0; --muted:#8b93a7; --link:#82a6ff; --bar:#3b6fd4; --warn:#d29922; }
+  @media (prefers-color-scheme: light){ :root{ --bg:#f6f7f9; --surface:#fff; --surface2:#f0f2f6;
+    --line:#e2e6ee; --text:#1a1e27; --muted:#5c6470; --link:#1a4fd6; --bar:#2f66d0; } }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
+  header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);padding:16px 0 12px;z-index:5}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .brand h1{font-size:18px;margin:0;font-weight:650} .brand small{color:var(--muted);font-size:12px}
+  .bar{display:flex;gap:8px;flex-wrap:wrap}
+  .bar input{flex:1;min-width:180px;padding:11px 13px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text);font-size:15px;outline:none}
+  .bar input:focus{border-color:var(--link)}
+  .bar select,.bar button{padding:0 12px;height:42px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface2);color:var(--text);font-size:14px;cursor:pointer}
+  .bar button:hover{border-color:var(--link)}
+  .modes{display:flex;gap:14px;margin:9px 2px 0;font-size:12.5px;color:var(--muted)}
+  .modes label{cursor:pointer} .modes input{vertical-align:-1px;margin-right:4px}
+  .meta{color:var(--muted);font-size:12.5px;margin:12px 2px 4px}
+  .timeline{display:flex;align-items:flex-end;gap:2px;height:72px;margin:8px 0 6px;padding:8px;
+    border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+  .timeline .b{flex:1;background:var(--bar);border-radius:2px 2px 0 0;min-height:2px;opacity:.85}
+  .badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.4px;padding:2px 6px;
+    border-radius:999px;background:color-mix(in srgb,var(--muted) 18%,transparent);color:var(--muted)}
+  .art{padding:10px 12px;margin:7px 0;border:1px solid var(--line);border-radius:11px;background:var(--surface)}
+  .art .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:2px}
+  .art .t{font-size:15px;font-weight:600;line-height:1.35}
+  .empty{color:var(--muted);text-align:center;margin-top:11vh;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <h1>Sovereign · Live Events</h1>
+      <small>your local GDELT mirror · auto-refreshing · credibility-ranked · <a href="/">← back to search</a></small>
+    </div>
+    <form class="bar" id="form" autocomplete="off">
+      <input id="q" placeholder="place · country · actor · topic   (e.g. Ukraine, Kabul, tanker)" autofocus>
+      <select id="days">
+        <option value="1">1d</option><option value="3" selected>3d</option>
+        <option value="7">7d</option><option value="14">14d</option><option value="30">30d</option>
+      </select>
+      <button type="submit">Track</button>
+    </form>
+    <div class="modes">
+      <label><input type="radio" name="mode" value="local" checked> Local mirror (reliable, on your disk)</label>
+      <label><input type="radio" name="mode" value="live"> Live web (full-text; may be rate-limited)</label>
+    </div>
+  </header>
+  <div class="meta" id="meta"></div>
+  <div class="timeline" id="timeline" style="display:none"></div>
+  <div id="out"><div class="empty"><b>Track any place, country, or event.</b><br>
+    Local mode reads your own GDELT event mirror — always works, matches place/actor/source.<br>
+    Live mode does full-text topic search on the web (throttle-prone). Try <b>Ukraine</b>, <b>Gaza</b>, or a country.</div></div>
+</div>
+<script>
+const q=document.getElementById('q'), form=document.getElementById('form'),
+      out=document.getElementById('out'), meta=document.getElementById('meta'),
+      tl=document.getElementById('timeline'), days=document.getElementById('days');
+function mode(){ return document.querySelector('input[name=mode]:checked').value; }
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+// only let http(s):// through an href — a javascript:/data: URL would click through and run.
+function safeUrl(u){ u=(u||'').trim(); if(/[\x00-\x20\x7F-\x9F"]/.test(u)) return '#'; return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
+// Optional API token from the URL hash (#token=...) so it never hits server logs; sent as header.
+const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+const AUTHH = TOKEN ? {'X-Sovereign-Token': TOKEN} : {};
+function fmtDate(s){ const m=String(s||'').match(/^(\d{4})(\d{2})(\d{2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:String(s||'').slice(0,10); }
+async function run(query){
+  meta.textContent=''; tl.style.display='none'; out.innerHTML='<div class="empty">tracking…</div>';
+  const ep = mode()==='live' ? '/api/events' : '/api/events_local';
+  try{
+    const r=await fetch(ep+'?q='+encodeURIComponent(query)+'&days='+days.value, {headers: AUTHH});
+    const d=await r.json();
+    if(d.error){ out.innerHTML='<div class="empty">'+esc(d.error)+'</div>'; return; }
+    render(d);
+  }catch(e){ out.innerHTML='<div class="empty">'+esc(e.message)+'</div>'; }
+}
+function render(d){
+  const arts=d.articles||[], tline=d.timeline||[];
+  let m=`<b>${arts.length}</b> ${d.local?'events':'articles'} on “${esc(d.query||'')}” · last ${esc(String(d.days||''))} days`;
+  if(d.note) m+=` · <span style="color:var(--warn)">${esc(d.note)}</span>`;
+  meta.innerHTML=m;
+  if(tline.length){
+    const max=Math.max(...tline.map(p=>+p.value||0))||1;
+    tl.innerHTML=tline.map(p=>`<div class="b" style="height:${Math.round((+p.value||0)/max*100)}%" title="${esc(fmtDate(p.date))}: ${esc(String(p.value||0))}"></div>`).join('');
+    tl.style.display='flex';
+  }
+  if(!arts.length){ out.innerHTML='<div class="empty">No coverage found in this window.</div>'; return; }
+  out.innerHTML=arts.map(a=>{
+    const badge=`<span class="badge">${esc(a.source_type||'WEB')}</span>`;
+    if(a.title){ // live (has headline)
+      return `<div class="art"><div class="top">${badge}<span>${esc(a.domain||'')}</span>${a.date?'· '+esc(fmtDate(a.date)):''}</div>
+        <div class="t"><a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer">${esc(a.title)}</a></div></div>`;
+    }
+    // local event (no headline; show source + place + kind)
+    const bits=[a.place,a.kind].filter(Boolean).map(esc).join(' · ');
+    return `<div class="art"><div class="top">${badge}${a.date?'<span>'+esc(fmtDate(a.date))+'</span>':''}${bits?'· '+bits:''}</div>
+      <div class="t"><a href="${safeUrl(a.url)}" target="_blank" rel="noopener noreferrer">${esc(a.domain||a.url)}</a></div></div>`;
+  }).join('');
+}
+form.addEventListener('submit',e=>{e.preventDefault();const v=q.value.trim();if(v){run(v);history.replaceState(null,'','/events?q='+encodeURIComponent(v));}});
+document.querySelectorAll('input[name=mode]').forEach(r=>r.addEventListener('change',()=>{const v=q.value.trim();if(v)run(v);}));
+const iq=new URLSearchParams(location.search).get('q'); if(iq){q.value=iq;run(iq);}
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sovereign Search</title>
+<style>
+  :root{
+    --bg:#0f1115; --surface:#161922; --surface2:#1c2028; --line:#262b36;
+    --text:#e7e9f0; --muted:#8b93a7; --link:#82a6ff; --link-visited:#b79bff;
+    --t0:#2ea043; --t1:#25b0bf; --t2:#6b7280; --t3:#d29922; --t4:#cf5b5b;
+    --shadow:0 1px 0 rgba(255,255,255,.02), 0 8px 24px rgba(0,0,0,.25);
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f7f9; --surface:#fff; --surface2:#f0f2f6; --line:#e2e6ee;
+      --text:#1a1e27; --muted:#5c6470; --link:#1a4fd6; --link-visited:#6b3fd0; --shadow:0 1px 3px rgba(0,0,0,.08); }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline} a:visited{color:var(--link-visited)}
+  .wrap{max-width:760px;margin:0 auto;padding:0 20px}
+
+  /* header / search */
+  header{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--line);
+    padding:18px 0 12px;margin-bottom:4px;z-index:5}
+  .brand{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+  .brand h1{font-size:19px;letter-spacing:.2px;margin:0;font-weight:650}
+  .brand .dot{color:var(--t0)}
+  .brand small{color:var(--muted);font-size:12px}
+  .searchbar{display:flex;gap:8px}
+  .searchbar input{flex:1;padding:12px 14px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text);font-size:15px;outline:none;box-shadow:var(--shadow)}
+  .searchbar input:focus{border-color:var(--link)}
+  .searchbar button{padding:0 16px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface2);color:var(--text);cursor:pointer;font-size:14px}
+  .searchbar button:hover{border-color:var(--link)}
+
+  .meta{color:var(--muted);font-size:12.5px;margin:10px 2px 4px}
+  .legend{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+  .barname{font-weight:700;letter-spacing:.02em}
+  .qtype{opacity:.75;font-variant:small-caps}
+  .swaphint{opacity:.55;font-size:11.5px}
+  .peopletoggle{display:block;margin:9px 2px 0;font-size:12.5px;color:var(--muted);cursor:pointer}
+  .peopletoggle input{vertical-align:-1px;margin-right:5px}
+  .quicklinks{display:flex;flex-wrap:wrap;gap:14px;margin:9px 2px 0;font-size:12px}
+  .quicklinks a{color:var(--muted)} .quicklinks a:hover{color:var(--link)}
+
+  /* badges */
+  .badge{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.4px;
+    padding:2px 7px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+  .b0{color:var(--t0);background:color-mix(in srgb,var(--t0) 15%,transparent);border-color:color-mix(in srgb,var(--t0) 35%,transparent)}
+  .b1{color:var(--t1);background:color-mix(in srgb,var(--t1) 15%,transparent);border-color:color-mix(in srgb,var(--t1) 35%,transparent)}
+  .b2{color:var(--muted);background:color-mix(in srgb,var(--t2) 16%,transparent);border-color:color-mix(in srgb,var(--t2) 30%,transparent)}
+  .b3{color:var(--t3);background:color-mix(in srgb,var(--t3) 15%,transparent);border-color:color-mix(in srgb,var(--t3) 35%,transparent)}
+  .b4{color:var(--t4);background:color-mix(in srgb,var(--t4) 15%,transparent);border-color:color-mix(in srgb,var(--t4) 35%,transparent)}
+
+  /* results */
+  #results{padding-bottom:60px}
+  .group-label{margin:20px 2px 8px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--muted)}
+  .result{padding:12px 14px;margin:8px 0;border:1px solid var(--line);border-radius:12px;
+    background:var(--surface);box-shadow:var(--shadow);border-left:3px solid var(--edge,var(--t2))}
+  .result .top{display:flex;align-items:center;gap:8px;margin-bottom:3px}
+  .result .host{color:var(--muted);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .result .title{font-size:16px;font-weight:600;line-height:1.35;margin:1px 0 3px}
+  .result .snippet{color:var(--muted);font-size:13.5px}
+  .result .foot{margin-top:5px;font-size:11.5px;color:var(--muted);display:flex;gap:10px}
+  .empty{color:var(--muted);text-align:center;margin-top:14vh}
+  .empty .big{font-size:22px;color:var(--text);font-weight:600;margin-bottom:6px}
+  .spin{text-align:center;color:var(--muted);margin:30px}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <h1>Sovereign<span class="dot">·</span>Search</h1>
+        <small>local · private · ranked by credibility, not ads</small>
+      </div>
+      <form class="searchbar" id="form" autocomplete="off">
+        <input id="q" name="q" placeholder="Search credible sources…  (press / to focus)" autofocus>
+        <button type="submit">Search</button>
+      </form>
+      <label class="peopletoggle"><input type="checkbox" id="people"> 🔎 People search — wide net across indie sites, code, Fediverse &amp; profiles (not data brokers). Add anchors: name + school + grad year + town.</label>
+      <label class="peopletoggle"><input type="checkbox" id="navigate"> 🧭 Deep navigate — small-world walk that follows links to reach long-tail sources a flat search misses (slower).</label>
+      <div class="legend" id="legend"></div>
+      <div class="quicklinks">
+        <a href="/events">◉ Live events (in-app)</a>
+        <a href="/records">⚖ Public records (safety)</a>
+        <a href="https://liveuamap.com/" target="_blank" rel="noopener noreferrer">Conflict map (LiveUAMap)</a>
+        <a href="https://ground.news/" target="_blank" rel="noopener noreferrer">Bias check (Ground News)</a>
+        <a href="https://www.allsides.com/unbiased-balanced-news" target="_blank" rel="noopener noreferrer">AllSides</a>
+      </div>
+    </header>
+
+    <div class="meta" id="meta"></div>
+    <div id="results">
+      <div class="empty">
+        <div class="big">Ask something real.</div>
+        <div>Government, academic, medical, and primary sources float to the top.<br>Forums sink. Social slop sinks further.</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+const TIERS = {
+  0:{cls:'b0',edge:'var(--t0)',label:'Authoritative — gov / edu / peer-reviewed'},
+  1:{cls:'b1',edge:'var(--t1)',label:'Primary / reference'},
+  2:{cls:'b2',edge:'var(--t2)',label:'General web'},
+  3:{cls:'b3',edge:'var(--t3)',label:'Forum / community'},
+  4:{cls:'b4',edge:'var(--t4)',label:'Social / low-signal'},
+};
+const GROUP = {0:'Authoritative sources',1:'Primary & reference',2:'General web',3:'Forums & community',4:'Social & low-signal'};
+
+const q = document.getElementById('q');
+const form = document.getElementById('form');
+const results = document.getElementById('results');
+const meta = document.getElementById('meta');
+
+// legend
+document.getElementById('legend').innerHTML =
+  [0,1,2,3,4].map(t=>`<span class="badge ${TIERS[t].cls}" title="${TIERS[t].label}">${['GOV/EDU/JOURNAL','PRIMARY/REF','WEB','FORUM','SOCIAL'][t]}</span>`).join('');
+
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// esc() stops HTML injection but NOT a javascript:/data: URL in an href — that clicks through and runs.
+// safeUrl() only lets clean http(s):// through; control chars / spaces / quotes / other schemes -> dead '#'.
+function safeUrl(u){ u=(u||'').trim(); if(/[\x00-\x20\x7F-\x9F"]/.test(u)) return '#'; return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
+function crumb(host,url){ return esc(host) + esc((url.split(host)[1]||'').replace(/\/$/,'').slice(0,60)); }
+// Optional API token: read from the URL hash (#token=...) so it never hits server access logs / query
+// strings. When SOVEREIGN_AUTH_TOKEN is set server-side, the UI sends it as X-Sovereign-Token.
+const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+const AUTHH = TOKEN ? {'X-Sovereign-Token': TOKEN} : {};
+
+async function run(query){
+  meta.textContent=''; results.innerHTML=`<div class="spin">searching…</div>`;
+  const ppl = document.getElementById('people').checked ? '&people=1' : '';
+  const nav = document.getElementById('navigate').checked;
+  try{
+    const r = await fetch((nav?'/api/navigate?q=':'/api/search?q=')+encodeURIComponent(query)+(nav?'':ppl), {headers: AUTHH});
+    const data = await r.json();
+    if(data.error){ results.innerHTML=`<div class="empty"><div class="big">Engine offline</div><div>${esc(data.error)}</div></div>`; return; }
+    render(data);
+  }catch(e){ results.innerHTML=`<div class="empty"><div class="big">Couldn’t reach the service</div><div>${esc(e.message)}</div></div>`; }
+}
+
+// DUAL BAR — two orderings of ONE result set, swapped with Tab.
+//
+// The server ranks by credibility, but it also ships `rank_raw`: the engines'
+// own relevance order, which it used to compute and then throw away. Keeping
+// it means the second bar costs no query, no latency and no network — both
+// loadouts are already equipped, and Tab swaps between them.
+//
+// Why it earns its place: on "Athena four player chess engine" the engines had
+// the right repository at position 1 while the credibility sort buried it
+// under arxiv and .edu. Neither ordering is correct in general. Carrying both
+// is the honest answer, and it lets the credibility layer stay strict instead
+// of being watered down to avoid burying things.
+let BAR = 'sovereign';
+let LAST = null;
+
+function render(data){
+  if(data) LAST = data;
+  data = LAST;
+  if(!data) return;
+  let list = (data.results||[]).slice();
+  if(!list.length){ results.innerHTML=`<div class="empty"><div class="big">Nothing found.</div></div>`; meta.textContent=''; return; }
+
+  const raw = BAR === 'raw';
+  if(raw) list.sort((a,b)=>(a.rank_raw??0)-(b.rank_raw??0));
+
+  meta.innerHTML = `<b>${data.count}</b> results for “${esc(data.query)}” · `
+    + `<span class="barname">${raw ? 'RAW — engine relevance, unranked' : 'SOVEREIGN — credibility ranked'}</span>`
+    + `${data.query_type?` · <span class="qtype">${esc(data.query_type)}</span>`:''}`
+    + ` · <span class="swaphint">Tab to swap</span>`;
+
+  let html=''; let lastTier=-1;
+  for(const res of list){
+    // Tier grouping is a property of the CREDIBILITY ordering. In raw mode the
+    // list is not tier-sorted, so the headers would interleave nonsensically.
+    if(!raw && res.tier!==lastTier){ html += `<div class="group-label">${GROUP[res.tier]||''}</div>`; lastTier=res.tier; }
+    const t = TIERS[res.tier]||TIERS[2];
+    html += `<div class="result" style="--edge:${t.edge}">
+      <div class="top">
+        <span class="badge ${t.cls}">${esc(res.source_type)}</span>
+        <span class="host">${crumb(res.host,res.url)}</span>
+      </div>
+      <div class="title"><a href="${safeUrl(res.url)}" target="_blank" rel="noopener noreferrer">${esc(res.title)}</a></div>
+      ${res.content?`<div class="snippet">${esc(res.content)}</div>`:''}
+      <div class="foot">${res.engine?'via '+esc(res.engine):''}${res.published?' · '+esc((res.published||'').slice(0,10)):''}</div>
+    </div>`;
+  }
+  results.innerHTML = html;
+}
+
+form.addEventListener('submit', e=>{ e.preventDefault(); const v=q.value.trim(); if(v){ run(v); history.replaceState(null,'','?q='+encodeURIComponent(v)); } });
+document.getElementById('people').addEventListener('change', ()=>{ const v=q.value.trim(); if(v) run(v); });
+document.getElementById('navigate').addEventListener('change', ()=>{ const v=q.value.trim(); if(v) run(v); });
+document.addEventListener('keydown', e=>{ if(e.key==='/' && document.activeElement!==q){ e.preventDefault(); q.focus(); q.select(); }});
+// Tab swaps bars — re-sorts what is already loaded, never re-queries.
+document.addEventListener('keydown', e=>{
+  if(e.key!=='Tab' || e.ctrlKey || e.altKey || e.metaKey) return;
+  if(!LAST) return;                       // nothing loaded: leave Tab alone
+  e.preventDefault();
+  BAR = (BAR==='sovereign') ? 'raw' : 'sovereign';
+  render(null);                            // re-render the SAME data
+});
+// run query from URL if present
+const initial = new URLSearchParams(location.search).get('q');
+if(initial){ q.value=initial; run(initial); }
+</script>
+</body>
+</html>

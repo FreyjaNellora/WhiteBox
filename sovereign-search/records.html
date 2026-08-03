@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sovereign Search · Public Records</title>
+<style>
+  :root{ --bg:#0f1115; --surface:#161922; --surface2:#1c2028; --line:#262b36; --text:#e7e9f0;
+    --muted:#8b93a7; --link:#82a6ff; --warn:#d29922; --warnbg:rgba(210,153,34,.12); }
+  @media (prefers-color-scheme: light){ :root{ --bg:#f6f7f9; --surface:#fff; --surface2:#f0f2f6;
+    --line:#e2e6ee; --text:#1a1e27; --muted:#5c6470; --link:#1a4fd6; --warnbg:rgba(210,153,34,.14); } }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--text);
+    font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+  .wrap{max-width:720px;margin:0 auto;padding:18px 20px 60px}
+  h1{font-size:20px;margin:0 0 2px} .sub{color:var(--muted);font-size:13px;margin-bottom:18px}
+  h2{font-size:14px;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);margin:22px 0 8px}
+  .card{border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:12px 14px;margin:8px 0}
+  .card .t{font-weight:650} .card .d{color:var(--muted);font-size:13px;margin-top:2px}
+  .caveats{border:1px solid color-mix(in srgb,var(--warn) 45%,transparent);background:var(--warnbg);
+    border-radius:12px;padding:12px 16px;margin:6px 0 4px}
+  .caveats b{color:var(--warn)} .caveats ul{margin:6px 0 0;padding-left:18px} .caveats li{margin:4px 0}
+  .bar{display:flex;gap:8px;margin:8px 0}
+  .bar input{flex:1;min-width:0;padding:10px 13px;border-radius:11px;border:1px solid var(--line);
+    background:var(--surface);color:var(--text);font-size:15px;outline:none}
+  .bar input:focus{border-color:var(--link)}
+  .bar button{padding:0 14px;border-radius:11px;border:1px solid var(--line);background:var(--surface2);
+    color:var(--text);cursor:pointer}
+  .case{border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:9px 12px;margin:6px 0}
+  .case .cn{font-weight:600} .case .cm{color:var(--muted);font-size:12.5px;margin-top:1px}
+  .hint{color:var(--muted);font-size:12.5px;margin:2px 2px}
+  .no{color:var(--muted);font-size:13px;margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚖ Public Records</h1>
+  <div class="sub">Official, public-by-law sources for your own safety awareness · <a href="/">← back to search</a></div>
+
+  <div class="caveats">
+    <b>Read this first — it matters.</b>
+    <ul>
+      <li><b>This is not a formal background check.</b> Screening a tenant or employee is regulated by the <b>FCRA</b> and needs a proper, disclosed, compliant service. This is for your <i>personal safety awareness</i>, not formal rent/hire decisions.</li>
+      <li><b>One input, not a verdict.</b> Common names muddy results, not everything is online, a clean record isn't proof someone's safe, and an old minor record isn't proof someone's dangerous.</li>
+      <li><b>Trust your gut too.</b> If someone gives you weird vibes, that instinct flagged something before any search did. Records are a second opinion on it — not a replacement.</li>
+    </ul>
+  </div>
+
+  <h2>Court records — live search</h2>
+  <div class="hint">Searches published U.S. court opinions via CourtListener (Free Law Project). Try a full name, or a case.</div>
+  <form class="bar" id="cform" autocomplete="off">
+    <input id="cq" placeholder="name or case to search in court opinions…" autofocus>
+    <button type="submit">Search</button>
+  </form>
+  <div id="cout"></div>
+
+  <h2>Safety registries</h2>
+  <div class="card">
+    <div class="t"><a href="https://www.nsopw.gov/" target="_blank" rel="noopener noreferrer">National Sex Offender Public Website (NSOPW)</a></div>
+    <div class="d">Run by the U.S. Dept. of Justice. Searches every state registry at once by name or location. The go-to for "this date/roommate gives me weird vibes."</div>
+  </div>
+
+  <h2>More court records</h2>
+  <div class="card">
+    <div class="t"><a href="https://pacer.uscourts.gov/" target="_blank" rel="noopener noreferrer">PACER</a></div>
+    <div class="d">The official U.S. federal court records system (dockets + filings). Authoritative; small per-page fee.</div>
+  </div>
+  <div class="card">
+    <div class="t">Your state's court portal</div>
+    <div class="d">State criminal/civil case search varies. Search <i>"[your state] judiciary case search"</i> or <i>"[county] court records"</i> — most are free and official. (The live search above covers published *opinions*, not every state docket.)</div>
+  </div>
+
+  <h2>Who they say they are</h2>
+  <div class="card">
+    <div class="t">Professional license lookup</div>
+    <div class="d">Verify a nurse, contractor, therapist, agent, etc. is really licensed: search <i>"[state] [profession] license verification"</i> — every state board has an official lookup.</div>
+  </div>
+  <div class="card">
+    <div class="t">News mentions</div>
+    <div class="d">Run their <b>name + town</b> in <a href="/">Sovereign Search</a> — local news is public and often the most human signal.</div>
+  </div>
+
+  <div class="no">
+    <b>What this deliberately does NOT do:</b> no data brokers (Spokeo, BeenVerified, TruthFinder, Instant Checkmate, Whitepages-premium) — those sell aggregated, often-wrong dossiers, and that's surveillance-for-profit, not public records. No dark web, ever. Only official, public-by-law sources.
+  </div>
+</div>
+<script>
+const cq=document.getElementById('cq'), cform=document.getElementById('cform'), cout=document.getElementById('cout');
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+// only let http(s):// through an href — a javascript:/data: URL would click through and run.
+function safeUrl(u){ u=(u||'').trim(); if(/[\x00-\x20\x7F-\x9F"]/.test(u)) return '#'; return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
+// Optional API token from the URL hash (#token=...) so it never hits server logs; sent as header.
+const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
+const AUTHH = TOKEN ? {'X-Sovereign-Token': TOKEN} : {};
+cform.addEventListener('submit', async e=>{
+  e.preventDefault(); const v=cq.value.trim(); if(!v) return;
+  cout.innerHTML='<div class="hint">searching court opinions…</div>';
+  try{
+    const r=await fetch('/api/court?q='+encodeURIComponent(v), {headers: AUTHH});
+    const d=await r.json();
+    if(d.error){ cout.innerHTML='<div class="hint">'+esc(d.error)+'</div>'; return; }
+    if(!d.cases||!d.cases.length){ cout.innerHTML='<div class="hint">No published opinions matched. (Most everyday cases live in state dockets, not opinions — see below.)</div>'; return; }
+    cout.innerHTML='<div class="hint"><b>'+esc(String(d.count))+'</b> matches (showing '+d.cases.length+')</div>'+d.cases.map(c=>
+      `<div class="case"><div class="cn"><a href="${safeUrl(c.url)}" target="_blank" rel="noopener noreferrer">${esc(c.name)}</a></div>
+       <div class="cm">${esc(c.court)}${c.date?' · '+esc(c.date):''}${c.docket?' · '+esc(c.docket):''}</div></div>`).join('');
+  }catch(err){ cout.innerHTML='<div class="hint">'+esc(err.message)+'</div>'; }
+});
+</script>
+</body>
+</html>
