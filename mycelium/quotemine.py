@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Sovereign Search - deterministic quote-miner (v2, NO LLM).
+Mycelium - deterministic quote-miner (v2, NO LLM).
 
   query -> SearXNG engine -> fetch top *credible* pages -> mine VERBATIM passages
   that match the query -> globally rank by relevance + source credibility ->
@@ -19,7 +19,7 @@ scanned before release (hidden-unicode / bidi / tag-char / control / entropy) an
 provenance-verified, fully local.
 
 Usage:  python quotemine.py "your query" [--sources 8] [--quotes 12] [--per-domain 3]
-Needs the local engine running (start-sovereign-search.ps1 -> 127.0.0.1:8888).
+Needs the local engine running (start-mycelium.ps1 -> 127.0.0.1:8888).
 """
 
 import argparse
@@ -44,7 +44,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 QDIR = os.path.join(HERE, "quarantine")
 PENDING = os.path.join(QDIR, "pending")
 VERIFIED = os.path.join(QDIR, "verified")
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SovereignSearch/quote-miner"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Mycelium/quote-miner"
 
 STOP = set(("the a an of to in on and or for with from by is are was were be been being as at "
             "that this it its into about over under how what why who when where which their his "
@@ -241,7 +241,7 @@ def main():
         else:
             sources = search(args.query, args.sources)
     except Exception as e:
-        print(f"! engine unavailable ({e}). Start it: start-sovereign-search.ps1")
+        print(f"! engine unavailable ({e}). Start it: start-mycelium.ps1")
         sys.exit(2)
     if not sources:
         print("! no results.")

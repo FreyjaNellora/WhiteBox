@@ -1,5 +1,5 @@
 """
-Sovereign Search — front-end + credibility layer over the local SearXNG JSON engine.
+Mycelium — front-end + credibility layer over the local SearXNG JSON engine.
 
 Architecture (Plan B): SearXNG (127.0.0.1:8888) is a headless JSON search *engine*.
 This tiny Flask app is the *face*: it serves our UI and proxies search SERVER-SIDE
@@ -38,29 +38,29 @@ from netfetch import _ip_bad  # one shared IP-safety definition (embedded-IPv4 a
 
 SEARXNG = "http://127.0.0.1:8888"
 GDELT = "https://api.gdeltproject.org/api/v2/doc/doc"
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SovereignSearch"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Mycelium"
 HERE = os.path.dirname(os.path.abspath(__file__))
 EVENTS_CACHE = os.path.join(HERE, "cache", "events")
 
 app = Flask(__name__)
 # Privacy: silence werkzeug's per-request access log — those lines contain your query
-# strings. Sovereign Search keeps no query history.
+# strings. Mycelium keeps no query history.
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
 # --- Optional API lock (OFF by default; single-user localhost needs no auth). ---
-# Set SOVEREIGN_AUTH_TOKEN to require a token on every API call — do this BEFORE exposing the
+# Set MYCELIUM_AUTH_TOKEN to require a token on every API call — do this BEFORE exposing the
 # face beyond this machine (e.g. Tailscale Serve/Funnel). When unset, this is a no-op and the
-# local flow is unchanged. Token accepted via the `X-Sovereign-Token` HEADER ONLY — the UI reads
+# local flow is unchanged. Token accepted via the `X-Mycelium-Token` HEADER ONLY — the UI reads
 # it from the URL hash (#token=) and sends the header, so the long-lived secret never lands in a
 # query string / server access log / browser history / shell history.
-AUTH_TOKEN = os.environ.get("SOVEREIGN_AUTH_TOKEN", "")
+AUTH_TOKEN = os.environ.get("MYCELIUM_AUTH_TOKEN", "")
 
 
 def require_auth(f):
     @wraps(f)
     def wrapper(*a, **kw):
         if AUTH_TOKEN:
-            supplied = request.headers.get("X-Sovereign-Token", "")
+            supplied = request.headers.get("X-Mycelium-Token", "")
             if not hmac.compare_digest(supplied, AUTH_TOKEN):   # constant-time: no timing side-channel
                 return jsonify({"error": "unauthorized"}), 401
         return f(*a, **kw)
@@ -373,7 +373,7 @@ def search():
 # and an association-poisoning amplifier. A GENEROUS per-client cap (default 20/min) never bites a human
 # but throttles an abuse loop. Keyed by token if set, else source IP. In-memory (single-process Flask).
 _NAV_HITS = {}
-_NAV_LIMIT = int(os.environ.get("SOVEREIGN_NAV_RATE", "20"))
+_NAV_LIMIT = int(os.environ.get("MYCELIUM_NAV_RATE", "20"))
 _NAV_LOCK = threading.Lock()
 
 
@@ -402,11 +402,11 @@ def api_navigate():
     q = request.args.get("q", "").strip()
     if not q:
         return jsonify({"query": q, "results": []})
-    # Key by SOURCE IP (an attacker rotating X-Sovereign-Token can't mint fresh buckets when auth is
+    # Key by SOURCE IP (an attacker rotating X-Mycelium-Token can't mint fresh buckets when auth is
     # off); add the token to the key only when auth is actually on (then the token is meaningful).
     rl_key = request.remote_addr or "?"
     if AUTH_TOKEN:
-        rl_key += "|" + request.headers.get("X-Sovereign-Token", "")
+        rl_key += "|" + request.headers.get("X-Mycelium-Token", "")
     if not _nav_rate_ok(rl_key):
         return jsonify({"query": q, "error": "rate limit: too many navigate calls — slow down"}), 429
     try:
@@ -593,10 +593,10 @@ def _refresher():
 
 if __name__ == "__main__":
     threading.Thread(target=_refresher, daemon=True).start()
-    print("Sovereign Search UI -> http://127.0.0.1:8890   (engine: SearXNG @ 8888)")
+    print("Mycelium UI -> http://127.0.0.1:8890   (engine: SearXNG @ 8888)")
     if AUTH_TOKEN:
-        print("API auth: ON (SOVEREIGN_AUTH_TOKEN set) — clients must send the X-Sovereign-Token header")
+        print("API auth: ON (MYCELIUM_AUTH_TOKEN set) — clients must send the X-Mycelium-Token header")
     else:
-        print("API auth: OFF (local only). Set SOVEREIGN_AUTH_TOKEN before exposing beyond this machine "
+        print("API auth: OFF (local only). Set MYCELIUM_AUTH_TOKEN before exposing beyond this machine "
               "(Tailscale Serve/Funnel).")
     app.run(host="127.0.0.1", port=8890, debug=False)

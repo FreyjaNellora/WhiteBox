@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Navigable Retrieval — small-world navigation layer over sovereign-search.
+Navigable Retrieval — small-world navigation layer over mycelium.
 
 Turns a flat lookup into a WALK to reach the long-tail "small data":
   seed with a normal search  ->  hop:
@@ -38,7 +38,7 @@ from canonical import readable                    # unicode-safe clean text (our
 from netfetch import guarded_client, safe_get, strip_url_creds, reg_domain, BROWSER_UA, MAX_FETCH_BYTES  # ONE guarded fetcher
 
 SEARXNG = "http://127.0.0.1:8888"
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SovereignSearch/navigate"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Mycelium/navigate"
 HERE = os.path.dirname(os.path.abspath(__file__))
 GRAPH_DB = os.path.join(HERE, "cache", "navgraph", "graph.db")
 TIER_W = {0: 1.4, 1: 1.15, 2: 1.0, 3: 0.7, 4: 0.4}   # credibility -> weight
@@ -311,7 +311,7 @@ def _mmr(results, q_terms, lam=0.3, k=20):
 # When it trips, READS AND SEARCH KEEP WORKING — only new writes stop. A search
 # tool that goes dark because its cache filled is worse than one that stops
 # learning.
-GRAPH_MAX_BYTES = int(os.environ.get("SOVEREIGN_GRAPH_MAX_MB", "64")) * 1024 * 1024
+GRAPH_MAX_BYTES = int(os.environ.get("MYCELIUM_GRAPH_MAX_MB", "64")) * 1024 * 1024
 _GRAPH_FULL = False
 
 
@@ -332,7 +332,7 @@ def _graph_db():
     if full and not _GRAPH_FULL:
         print(f"[navgraph] CEILING REACHED — {used/1048576:.1f} MB of "
               f"{allowed/1048576:.0f} MB. Learning is paused; search and the "
-              f"existing graph still work. Raise SOVEREIGN_GRAPH_MAX_MB when "
+              f"existing graph still work. Raise MYCELIUM_GRAPH_MAX_MB when "
               f"there is room.", file=sys.stderr)
     _GRAPH_FULL = full
     con = sqlite3.connect(GRAPH_DB, timeout=30)
@@ -568,7 +568,7 @@ def navigable_search(query, budget_hops=4, budget_fetches=16, diversity=0.3, eng
 
 # ---------------------------------------------------------------- CLI
 def main():
-    ap = argparse.ArgumentParser(description="Navigable (small-world) retrieval over sovereign-search.")
+    ap = argparse.ArgumentParser(description="Navigable (small-world) retrieval over mycelium.")
     ap.add_argument("query")
     ap.add_argument("--hops", type=int, default=4)
     ap.add_argument("--fetches", type=int, default=16)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Sovereign Search - local GDELT event ingest (no API, no rate limits).
+Mycelium - local GDELT event ingest (no API, no rate limits).
 
 Downloads GDELT 2.0 'export' event files (tiny ~26 KB zips, published every 15 min) from
 the FILE server (data.gdeltproject.org — a plain file host, NOT the throttled API), parses
@@ -28,7 +28,7 @@ from server import classify, http_url  # credibility tiers + the single URL-emis
 BASE = "https://data.gdeltproject.org/gdeltv2"   # HTTPS: integrity + no cleartext MITM of the feed
 HERE = os.path.dirname(os.path.abspath(__file__))
 DB = os.path.join(HERE, "cache", "gdelt", "events.db")
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SovereignSearch"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Mycelium"
 MAX_ZIP_BYTES = 50 * 1024 * 1024        # a real 15-min export zip is ~26 KB; refuse anything huge (compressed)
 MAX_CSV_BYTES = 100 * 1024 * 1024       # cap the DECOMPRESSED read so a zip-bomb can't OOM the box
 

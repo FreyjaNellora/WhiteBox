@@ -1,5 +1,5 @@
 # Launch SearXNG with request logging silenced — the per-request access log lines contain
-# your query strings, and Sovereign Search keeps no query history. This runs the normal
+# your query strings, and Mycelium keeps no query history. This runs the normal
 # searx.webapp entrypoint after turning werkzeug's access log down to errors only.
 import logging
 import runpy

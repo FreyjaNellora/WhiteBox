@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """
-bench.py — honest head-to-head: sovereign-search vs Google. Real numbers, no rigging.
+bench.py — honest head-to-head: mycelium vs Google. Real numbers, no rigging.
 
 "Google" = Google's own results via SearXNG's google scraper (no login/personalization) —
 a fair, reproducible proxy; falls back to DuckDuckGo/Bing-class if the google engine isn't
 enabled locally. We do NOT claim to beat Google at relevance / raw coverage / speed (it wins
-those, and we report it). We measure the axes sovereign-search is BUILT for:
+those, and we report it). We measure the axes mycelium is BUILT for:
 
   credible%   : share of top-10 that are authoritative — GOV/EDU/JOURNAL/PRIMARY/REF (tier <= 1)
   low-signal% : share that are FORUM/SOCIAL (tier >= 3)
@@ -30,7 +30,7 @@ from server import classify
 
 SEARXNG = "http://127.0.0.1:8888"
 FACE = "http://127.0.0.1:8890"
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) SovereignSearch/bench"
+UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Mycelium/bench"
 BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
               "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
 TOPN = 10
@@ -145,7 +145,7 @@ def main():
     med = lambda c: statistics.median(lat[c]) if lat[c] else 0
 
     md = [
-        "# Benchmark — sovereign-search vs Google (honest)",
+        "# Benchmark — mycelium vs Google (honest)",
         "",
         f"*{len(QUERIES)} diverse queries. **Both Google and DuckDuckGo block direct scraping** "
         "(Google returns 0 results to the scraper; DDG-html returns a 202 anomaly-challenge), so the only "

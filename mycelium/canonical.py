@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Sovereign Search - canonical content artifact (seam-defense primitive, NO deps).
+Mycelium - canonical content artifact (seam-defense primitive, NO deps).
 
 THE PROBLEM THIS SOLVES
   In a scrape->scan->read pipeline, the components almost never fail on their own -

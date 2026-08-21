@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sovereign Search · Live Events</title>
+<title>Mycelium · Live Events</title>
 <style>
   :root{ --bg:#0f1115; --surface:#161922; --surface2:#1c2028; --line:#262b36;
     --text:#e7e9f0; --muted:#8b93a7; --link:#82a6ff; --bar:#3b6fd4; --warn:#d29922; }
@@ -42,7 +42,7 @@
 <div class="wrap">
   <header>
     <div class="brand">
-      <h1>Sovereign · Live Events</h1>
+      <h1>Mycelium · Live Events</h1>
       <small>your local GDELT mirror · auto-refreshing · credibility-ranked · <a href="/">← back to search</a></small>
     </div>
     <form class="bar" id="form" autocomplete="off">
@@ -74,7 +74,7 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 function safeUrl(u){ u=(u||'').trim(); if(/[\x00-\x20\x7F-\x9F"]/.test(u)) return '#'; return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
 // Optional API token from the URL hash (#token=...) so it never hits server logs; sent as header.
 const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
-const AUTHH = TOKEN ? {'X-Sovereign-Token': TOKEN} : {};
+const AUTHH = TOKEN ? {'X-Mycelium-Token': TOKEN} : {};
 function fmtDate(s){ const m=String(s||'').match(/^(\d{4})(\d{2})(\d{2})/); return m?`${m[1]}-${m[2]}-${m[3]}`:String(s||'').slice(0,10); }
 async function run(query){
   meta.textContent=''; tl.style.display='none'; out.innerHTML='<div class="empty">tracking…</div>';

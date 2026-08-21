@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sovereign Search</title>
+<title>Mycelium</title>
 <style>
   :root{
     --bg:#0f1115; --surface:#161922; --surface2:#1c2028; --line:#262b36;
@@ -74,7 +74,7 @@
   <div class="wrap">
     <header>
       <div class="brand">
-        <h1>Sovereign<span class="dot">·</span>Search</h1>
+        <h1>Mycelium</h1>
         <small>local · private · ranked by credibility, not ads</small>
       </div>
       <form class="searchbar" id="form" autocomplete="off">
@@ -127,9 +127,9 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 function safeUrl(u){ u=(u||'').trim(); if(/[\x00-\x20\x7F-\x9F"]/.test(u)) return '#'; return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
 function crumb(host,url){ return esc(host) + esc((url.split(host)[1]||'').replace(/\/$/,'').slice(0,60)); }
 // Optional API token: read from the URL hash (#token=...) so it never hits server access logs / query
-// strings. When SOVEREIGN_AUTH_TOKEN is set server-side, the UI sends it as X-Sovereign-Token.
+// strings. When MYCELIUM_AUTH_TOKEN is set server-side, the UI sends it as X-Mycelium-Token.
 const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
-const AUTHH = TOKEN ? {'X-Sovereign-Token': TOKEN} : {};
+const AUTHH = TOKEN ? {'X-Mycelium-Token': TOKEN} : {};
 
 async function run(query){
   meta.textContent=''; results.innerHTML=`<div class="spin">searching…</div>`;
@@ -155,7 +155,7 @@ async function run(query){
 // under arxiv and .edu. Neither ordering is correct in general. Carrying both
 // is the honest answer, and it lets the credibility layer stay strict instead
 // of being watered down to avoid burying things.
-let BAR = 'sovereign';
+let BAR = 'mycelium';
 let LAST = null;
 
 function render(data){
@@ -169,7 +169,7 @@ function render(data){
   if(raw) list.sort((a,b)=>(a.rank_raw??0)-(b.rank_raw??0));
 
   meta.innerHTML = `<b>${data.count}</b> results for “${esc(data.query)}” · `
-    + `<span class="barname">${raw ? 'RAW — engine relevance, unranked' : 'SOVEREIGN — credibility ranked'}</span>`
+    + `<span class="barname">${raw ? 'RAW — engine relevance, unranked' : 'MYCELIUM — credibility ranked'}</span>`
     + `${data.query_type?` · <span class="qtype">${esc(data.query_type)}</span>`:''}`
     + ` · <span class="swaphint">Tab to swap</span>`;
 
@@ -201,7 +201,7 @@ document.addEventListener('keydown', e=>{
   if(e.key!=='Tab' || e.ctrlKey || e.altKey || e.metaKey) return;
   if(!LAST) return;                       // nothing loaded: leave Tab alone
   e.preventDefault();
-  BAR = (BAR==='sovereign') ? 'raw' : 'sovereign';
+  BAR = (BAR==='mycelium') ? 'raw' : 'mycelium';
   render(null);                            // re-render the SAME data
 });
 // run query from URL if present

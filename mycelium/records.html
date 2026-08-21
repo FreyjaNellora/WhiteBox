@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sovereign Search · Public Records</title>
+<title>Mycelium · Public Records</title>
 <style>
   :root{ --bg:#0f1115; --surface:#161922; --surface2:#1c2028; --line:#262b36; --text:#e7e9f0;
     --muted:#8b93a7; --link:#82a6ff; --warn:#d29922; --warnbg:rgba(210,153,34,.12); }
@@ -78,7 +78,7 @@
   </div>
   <div class="card">
     <div class="t">News mentions</div>
-    <div class="d">Run their <b>name + town</b> in <a href="/">Sovereign Search</a> — local news is public and often the most human signal.</div>
+    <div class="d">Run their <b>name + town</b> in <a href="/">Mycelium</a> — local news is public and often the most human signal.</div>
   </div>
 
   <div class="no">
@@ -92,7 +92,7 @@ function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>'
 function safeUrl(u){ u=(u||'').trim(); if(/[\x00-\x20\x7F-\x9F"]/.test(u)) return '#'; return /^https?:\/\//i.test(u) ? esc(u) : '#'; }
 // Optional API token from the URL hash (#token=...) so it never hits server logs; sent as header.
 const TOKEN = new URLSearchParams(location.hash.slice(1)).get('token') || '';
-const AUTHH = TOKEN ? {'X-Sovereign-Token': TOKEN} : {};
+const AUTHH = TOKEN ? {'X-Mycelium-Token': TOKEN} : {};
 cform.addEventListener('submit', async e=>{
   e.preventDefault(); const v=cq.value.trim(); if(!v) return;
   cout.innerHTML='<div class="hint">searching court opinions…</div>';

@@ -1,6 +1,6 @@
-# Wipe local Sovereign Search history.
+# Wipe local Mycelium history.
 #
-# "Sovereign" means the data is yours to erase. This clears EVERY on-disk store that is
+# Your data is yours to erase. This clears EVERY on-disk store that is
 # derived from what YOU searched / navigated:
 #   * cache\events   - your live GDELT event-query cache (keyed by your query)
 #   * cache\court    - your CourtListener query cache (keyed by your query)
@@ -21,7 +21,7 @@
 
 param([switch]$All)
 
-$sov = $PSScriptRoot   # this script lives in the sovereign-search folder
+$sov = $PSScriptRoot   # this script lives in the mycelium folder
 
 function Wipe-Dir($path) {
     if (Test-Path $path) {

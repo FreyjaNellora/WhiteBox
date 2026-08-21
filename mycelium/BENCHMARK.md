@@ -1,4 +1,4 @@
-# Benchmark — sovereign-search vs Google (honest)
+# Benchmark — mycelium vs Google (honest)
 
 *8 diverse queries. **Both Google and DuckDuckGo block direct scraping** (Google returns 0 results to the scraper; DDG-html returns a 202 anomaly-challenge), so the only way to read a mainstream index programmatically is SearXNG's rotating aggregation. That path ALSO applies our credibility plugin to the baseline, so the numbers below **understate** our edge (a truly raw index would score even lower on authoritative%). Baseline = **Mainstream (DuckDuckGo/Brave/Startpage via SearXNG)**. Latency is where the mainstream wins. Top-10, dedup by domain.*
 

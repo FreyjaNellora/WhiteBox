@@ -9,7 +9,7 @@ this file records that the work has been changed and the nature of the changes.
   `hostnames` rules, and the enabled academic / indie-web / people engine set.
 - `run_engine.py` — thin launcher that starts `searx.webapp` with the web-server access log filtered
   (so query strings are never logged).
-- `README-SOVEREIGN.md`, `MODIFICATIONS.md` — this documentation.
+- `README-MYCELIUM.md`, `MODIFICATIONS.md` — this documentation.
 
 ## Upstream files changed
 - None of the upstream `searx/` source files are modified; all customization is done through the

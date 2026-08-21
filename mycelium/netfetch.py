@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-netfetch.py — the ONE guarded way any sovereign-search component fetches an untrusted URL.
+netfetch.py — the ONE guarded way any mycelium component fetches an untrusted URL.
 
 Every fetch of an attacker-influenced web page routes through here so the guard exists in
 exactly one place instead of being re-invented (or forgotten) per component. The cross-lineage
