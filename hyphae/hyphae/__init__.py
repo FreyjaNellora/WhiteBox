@@ -23,10 +23,12 @@ from .bearer import (
 )
 from .policy import evaluate, select_bearers, Decision, DEFAULT_LEGAL_WHITELIST
 from .node import Node, make_receipt, verify_receipt
+from .ip_bearer import IPBearer
 
 __all__ = [
     "Identity", "address_of", "verify", "Bundle", "Encoder", "Decoder",
     "Bearer", "Capabilities", "LoopbackBearer", "FileBearer", "loopback_pair",
     "LEGAL_CLASSES", "evaluate", "select_bearers", "Decision",
     "DEFAULT_LEGAL_WHITELIST", "Node", "make_receipt", "verify_receipt",
+    "IPBearer",
 ]
