@@ -1,18 +1,28 @@
 """Hyphae L4 — bearer selection policy.
 
 Given the bearers a node can currently see and a bundle's requirements, decide
-which bearers to spray across. This is where the three invariants from THEORY.md
-are enforced *before a single symbol is emitted*:
+which bearers to spray across.
 
-* **Legality** — a bearer is eligible only if its ``legal_class`` is in the
-  operator's lawful whitelist.
-* **Detectability budget** — a bearer is eligible only if its detectability is
-  at or below the bundle's ``det_budget``.
-* **Deadline / priority** — eligible bearers are ordered so urgent traffic
-  prefers the fastest threads and bulk traffic prefers the quietest ones.
+**Legality and detectability are independent axes.** Legality is the hard gate:
+a bearer is eligible only if its ``legal_class`` is in the operator's lawful
+whitelist. Detectability is *not* a legal constraint — being detectable is never
+required by law, only sometimes by physics (the only bearer that reaches, or the
+only one fast enough). So detectability is minimized by default and spent only
+where delivery requires it:
 
-Ineligible bearers are *refused*, and ``explain`` reports why, so the refusal is
-auditable rather than silent.
+* **Legality (hard gate)** — a bearer is eligible only if its ``legal_class`` is
+  whitelisted. Ineligible bearers are *refused*, and ``evaluate`` reports why.
+* **Detectability budget (optional hard cap)** — if the operator sets one, a
+  bearer above the bundle's ``det_budget`` is refused. The default budget allows
+  anything, because the *ordering* below, plus the node's stealth-by-default
+  escalation (see node.py), already keep transit as quiet as delivery permits.
+* **Ordering** — non-urgent bundles list the quietest bearers first; urgent
+  bundles (``is_urgent``) list the fastest first, because there stealth yields
+  to the deadline.
+
+The node starts each non-urgent send on the single quietest eligible bearer and
+climbs this ordered list only when a receipt has not come back in time — so a
+louder bearer is used strictly where required, never by default.
 """
 from __future__ import annotations
 
@@ -58,16 +68,23 @@ def evaluate(
             continue
         eligible.append(b)
 
-    urgent = bundle.priority >= URGENT_PRIORITY or (
-        bundle.deadline_s != 0 and bundle.deadline_s <= 60
-    )
-    if urgent:
+    if is_urgent(bundle):
         # Fastest first: low latency, then high rate.
         eligible.sort(key=lambda b: (b.capabilities().latency_s, -b.capabilities().rate_bps))
     else:
         # Quietest, most reliable first: low detectability, then low error rate.
         eligible.sort(key=lambda b: (b.capabilities().detectability, b.capabilities().error_rate))
     return Decision(chosen=eligible, refused=refused)
+
+
+def is_urgent(bundle: Bundle) -> bool:
+    """A bundle is urgent (delivery beats stealth) if it is high priority or has
+    a tight deadline. Urgent bundles start on the fastest bearers; everything
+    else starts on the quietest and only escalates if delivery is not confirmed.
+    """
+    return bundle.priority >= URGENT_PRIORITY or (
+        bundle.deadline_s != 0 and bundle.deadline_s <= 60
+    )
 
 
 def select_bearers(

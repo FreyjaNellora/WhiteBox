@@ -26,7 +26,7 @@ from .bearer import Bearer
 from .bundle import Bundle
 from .fountain import Decoder, Encoder
 from .identity import Identity, address_of, verify
-from .policy import DEFAULT_LEGAL_WHITELIST, select_bearers
+from .policy import DEFAULT_LEGAL_WHITELIST, is_urgent, select_bearers
 
 FRAME_SYMBOL = 1
 FRAME_RECEIPT = 2
@@ -66,7 +66,7 @@ class _InFlight:
     bundle: Bundle
     encoder: Encoder
     delivered: bool = False
-    _seed: int = 0
+    width: int = 1  # how many bearers (quietest-first) this send is currently using
 
 
 @dataclass
@@ -110,16 +110,25 @@ class Node:
         )
         raw = bundle.to_bytes(self.identity)
         encoder = Encoder(bundle.msg_id, raw, block_size=block_size)
-        self._inflight[bundle.msg_id] = _InFlight(bundle, encoder)
-        # First burst.
+        # Stealth by default: a non-urgent send starts on the single quietest
+        # eligible bearer. An urgent send starts wide (all eligible), since there
+        # the deadline outranks stealth.
+        ordered = self._ordered(bundle)
+        start_width = len(ordered) if is_urgent(bundle) else 1
+        self._inflight[bundle.msg_id] = _InFlight(bundle, encoder, width=start_width)
         n = int(encoder.k * _OVERHEAD) + _OVERHEAD_CONST
-        self._spray(bundle, encoder, n)
+        self._spray(bundle, encoder, n, start_width)
         if not request_receipt:
             self._inflight.pop(bundle.msg_id, None)
         return bundle.msg_id
 
-    def _spray(self, bundle: Bundle, encoder: Encoder, n: int) -> None:
-        chosen = select_bearers(self.bearers, bundle, self.legal_whitelist)
+    def _ordered(self, bundle: Bundle) -> list[Bearer]:
+        """Eligible bearers, quietest-first (or fastest-first if urgent)."""
+        return select_bearers(self.bearers, bundle, self.legal_whitelist)
+
+    def _spray(self, bundle: Bundle, encoder: Encoder, n: int, width: int) -> None:
+        ordered = self._ordered(bundle)
+        chosen = ordered[:max(1, width)]  # only the quietest `width` bearers
         if not chosen:
             return
         symbols = encoder.stream(n)
@@ -193,9 +202,13 @@ class Node:
                 self._failed_out.add(msg_id)
                 done.append(msg_id)
                 continue
-            # Not yet confirmed: re-spray a small top-up burst (retry/escalate).
+            # Not yet confirmed: escalate detectability by exactly one step —
+            # add the next-quietest bearer — then re-spray a top-up burst. A
+            # louder bearer is thus recruited only because delivery required it.
+            ordered = self._ordered(inflight.bundle)
+            inflight.width = min(inflight.width + 1, len(ordered)) if ordered else inflight.width
             self._spray(inflight.bundle, inflight.encoder,
-                        max(2, inflight.encoder.k))
+                        max(2, inflight.encoder.k), inflight.width)
         for msg_id in done:
             self._inflight.pop(msg_id, None)
 

@@ -26,6 +26,17 @@ FILE_CAPS = Capabilities(
     error_rate=0.0, directionality="half", legal_class="local-only",
     detectability=0.10,
 )
+# A legal but LOUD bearer — used to prove stealth-by-default leaves it untouched
+# unless delivery actually requires escalating onto it.
+LOUD_FILE_CAPS = Capabilities(
+    name="loud-broadcast", rate_bps=1e5, mtu=65536, latency_s=0.5, reach_m=5000,
+    error_rate=0.0, directionality="half", legal_class="unlicensed-ism",
+    detectability=0.9,
+)
+
+
+def _hyf_count(path):
+    return len([f for f in os.listdir(path) if f.endswith(".hyf")])
 
 
 class TestNodeDelivery(unittest.TestCase):
@@ -80,6 +91,47 @@ class TestNodeDelivery(unittest.TestCase):
                     break
             self.assertTrue(na.is_delivered(mid))
             self.assertEqual(nb.inbox[0][1], b"lantern lit" * 30)
+
+    def test_stealth_by_default_leaves_loud_bearer_untouched(self):
+        # A quiet loopback + a loud file bearer. A non-urgent send must deliver
+        # over the quiet bearer alone and never write to the loud bearer.
+        with tempfile.TemporaryDirectory() as d:
+            a2b, b2a = os.path.join(d, "a2b"), os.path.join(d, "b2a")
+            alice, bob = Identity.from_seed(b"A" * 32), Identity.from_seed(b"B" * 32)
+            a_lo, b_lo = loopback_pair(LOOP_CAPS)               # detectability 0.05
+            a_loud = FileBearer(LOUD_FILE_CAPS, outbox=a2b, inbox=b2a)  # 0.9
+            b_loud = FileBearer(LOUD_FILE_CAPS, outbox=b2a, inbox=a2b)
+            na = Node(alice, bearers=[a_lo, a_loud])
+            nb = Node(bob, bearers=[b_lo, b_loud])
+
+            mid = na.send(bob.address, bob.x_public_bytes, b"quiet word" * 20,
+                          created_at=0, deadline_s=600)  # non-urgent
+            for i in range(20):
+                nb.tick(i)
+                na.tick(i)
+                if na.is_delivered(mid):
+                    break
+            self.assertTrue(na.is_delivered(mid))
+            self.assertEqual(nb.inbox[0][1], b"quiet word" * 20)
+            # The loud bearer's outbox must be empty: stealth never spent it.
+            self.assertEqual(_hyf_count(a2b), 0, "loud bearer was used unnecessarily")
+
+    def test_urgent_send_uses_all_bearers_immediately(self):
+        # An urgent send spends detectability up front: it sprays across the loud
+        # bearer too, from the first burst.
+        with tempfile.TemporaryDirectory() as d:
+            a2b, b2a = os.path.join(d, "a2b"), os.path.join(d, "b2a")
+            alice, bob = Identity.from_seed(b"A" * 32), Identity.from_seed(b"B" * 32)
+            a_lo, b_lo = loopback_pair(LOOP_CAPS)
+            a_loud = FileBearer(LOUD_FILE_CAPS, outbox=a2b, inbox=b2a)
+            b_loud = FileBearer(LOUD_FILE_CAPS, outbox=b2a, inbox=a2b)
+            na = Node(alice, bearers=[a_lo, a_loud])
+            nb = Node(bob, bearers=[b_lo, b_loud])
+
+            na.send(bob.address, bob.x_public_bytes, b"now now now" * 20,
+                    created_at=0, priority=200)  # urgent
+            self.assertGreater(_hyf_count(a2b), 0,
+                               "urgent send should have used the loud bearer at once")
 
     def test_honest_failure_on_deadline(self):
         # Bob never ticks: no receipt ever returns. Sender must report failure,

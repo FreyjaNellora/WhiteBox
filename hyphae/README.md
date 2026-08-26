@@ -34,7 +34,7 @@ python -m unittest discover -s tests # 15 tests: crypto, fountain, delivery, pol
 | `hyphae/bundle.py`    | L1 | the sovereign, signed, content-addressed message |
 | `hyphae/fountain.py`  | L2 | LT fountain coding — reassemble from any mix of bearers |
 | `hyphae/bearer.py`    | L0 | the uniform channel interface + loopback & file bearers |
-| `hyphae/policy.py`    | L4 | bearer selection: legality + detectability + deadline |
+| `hyphae/policy.py`    | L4 | bearer selection: legality gate + stealth-by-default + deadline |
 | `hyphae/node.py`      | L3 | send / receive / reassemble / confirm with receipts |
 
 ## Scope and intent

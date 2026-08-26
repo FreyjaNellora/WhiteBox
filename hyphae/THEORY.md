@@ -43,16 +43,25 @@ unintended models** — arrangements that satisfy every literal clause while doi
 something the drafters never enumerated. A finite list of rules can never close
 an open-ended space of channels.
 
-Hyphae turns that into engineering with three invariants enforced **at bearer-
-selection time** (see §5):
+Hyphae turns that into engineering. **Legality and detectability are independent
+axes** — do not conflate them. Legality is the only thing that can *forbid* a
+bearer; detectability is never required by law, only sometimes by physics, so it
+is minimized by default and spent only where delivery demands it:
 
-1. **Legality invariant.** Every bearer declares a `legal_class`. A policy can
-   hard-restrict selection to a lawful whitelist. Lawfulness is a property of
-   *what the system is built out of*, checked before a byte moves — not a hope.
-2. **Detectability budget.** A bundle may cap how visible its transit is; the
-   manager only picks bearers under that cap.
-3. **Deadline / priority.** Urgency unlocks faster, costlier, or more numerous
-   bearers.
+1. **Legality invariant (the hard gate).** Every bearer declares a `legal_class`.
+   A policy hard-restricts selection to a lawful whitelist. Lawfulness is a
+   property of *what the system is built out of*, checked before a byte moves —
+   not a hope. This is the only gate that refuses a bearer outright.
+2. **Stealth by default (an optimization, not a rule).** A non-urgent send
+   starts on the single *quietest* legal bearer and climbs to louder ones **only
+   when a receipt has not returned in time** — so a detectable bearer is used
+   strictly where delivery requires it, never by default. An operator may also
+   set an optional `det_budget` hard cap when a specific message must never
+   exceed a chosen visibility; the default cap allows anything, because the
+   escalation ladder already keeps transit as quiet as delivery permits.
+3. **Deadline / priority.** An urgent bundle inverts the default: it spends
+   detectability up front, starting wide on the fastest bearers, because there
+   the deadline outranks stealth.
 
 Underneath sits a permanent backstop: by **Rice's theorem**, no adversary can
 build a decider that reads a stream of individually-lawful actions and decides
@@ -162,10 +171,15 @@ truthful failure" is the only contract — never a silent drop.
 
 The runtime that, wherever the node stands, **discovers which bearers are live
 now**, reads each one's `capabilities()`, and selects/combines them per bundle
-under the three invariants of §1. Selection is a policy function
-(`policy.py`): given the bundle's `det_budget`, `deadline_s`, `priority`, and a
-legal whitelist, it returns the ordered set of bearers to spray across. Legality
-and detectability are enforced *here*, before any symbol is emitted.
+under the invariants of §1. Selection is a policy function (`policy.py`): given
+the bundle's `deadline_s`, `priority`, `det_budget`, and a legal whitelist, it
+refuses any unlawful bearer and returns the rest ordered quietest-first (or
+fastest-first when urgent). The node then applies **stealth-by-default
+escalation**: it sprays a non-urgent send across only the quietest bearer, and
+widens to the next-quietest one step at a time on each servicing pass where no
+receipt has come back — so louder bearers are recruited strictly as delivery
+requires. Legality is enforced *here*, before any symbol is emitted; detectability
+is minimized *here*, not treated as a legal constraint.
 
 ## 3. What the reference implementation proves
 
