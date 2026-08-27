@@ -13,9 +13,15 @@ comes back (proof of delivery) or the deadline passes (honest failure). That is
 the whole delivery contract — "delivered, or a truthful failure," never a silent
 drop.
 
-This reference implements direct delivery over the bearers a node holds.
-Multi-hop relaying and mailbox nodes (described in THEORY.md §L3) layer on top of
-this same symbol/receipt machinery and are the next implementation step.
+Relaying is **cut-through and low-footprint**, so a device that temporarily
+carries someone else's message barely feels it. A relay reads only a tiny
+cleartext routing header on each fragment (destination + remaining hops),
+forwards the fragment onward immediately across its other bearers, and never
+decodes, reassembles, or buffers the message — only the destination pays decode
+cost. A per-tick forwarding cap (``max_forwards_per_tick``) keeps relaying from
+starving the host's own traffic, and a ``(msg_id, seed)`` seen-set plus the hop
+budget bound loops and duplicate work. The sealed bundle is never opened by a
+relay, so a borrowed node cannot read what it carries.
 """
 from __future__ import annotations
 
@@ -24,7 +30,6 @@ from dataclasses import dataclass, field
 
 from .bearer import Bearer
 from .bundle import Bundle
-from .envelope import Envelope
 from .fountain import Decoder, Encoder
 from .identity import Identity, address_of, verify
 from .policy import DEFAULT_LEGAL_WHITELIST, is_urgent, select_bearers
@@ -39,9 +44,20 @@ _RECEIPT = struct.Struct(">16s32s64s")  # msg_id, recipient pubkey, signature
 _OVERHEAD = 1.7
 _OVERHEAD_CONST = 8
 
+# Offsets within a fountain symbol (see fountain._SYM = ">16sIIII"): the msg_id
+# and this symbol's seed, read cheaply by a relay without decoding anything.
+_SYM_MSGID = slice(0, 16)
+_SYM_SEED = slice(28, 32)
+
 
 def _frame(kind: int, body: bytes) -> bytes:
     return bytes([kind]) + body
+
+
+def _symbol_frame(dest: bytes, hops: int, symbol: bytes) -> bytes:
+    """A symbol on the wire, with a tiny cleartext routing header a relay reads
+    to forward it WITHOUT decoding the message: [SYMBOL][dest 16][hops 1][symbol]."""
+    return bytes([FRAME_SYMBOL]) + dest + bytes([hops & 0xFF]) + symbol
 
 
 def make_receipt(identity: Identity, msg_id: bytes) -> bytes:
@@ -68,6 +84,7 @@ class _InFlight:
     encoder: Encoder
     delivered: bool = False
     width: int = 1  # how many bearers (quietest-first) this send is currently using
+    hop_limit: int = 8
 
 
 @dataclass
@@ -76,6 +93,9 @@ class Node:
     bearers: list[Bearer] = field(default_factory=list)
     legal_whitelist: frozenset = DEFAULT_LEGAL_WHITELIST
     relay: bool = False  # if True, forward bundles addressed to others (a bridge)
+    # Good-guest cap: the most symbol-forwards this node will do for OTHERS per
+    # tick, so a borrowed node never has its own traffic starved by relaying.
+    max_forwards_per_tick: int = 256
 
     def __post_init__(self) -> None:
         self._decoders: dict[bytes, Decoder] = {}
@@ -85,6 +105,8 @@ class Node:
         self._failed_out: set[bytes] = set()     # our sends that expired
         self._relayed: set[bytes] = set()        # msg_ids we've forwarded onward
         self._fwd_receipts: set[bytes] = set()   # receipts we've forwarded back
+        self._seen: set[tuple[bytes, bytes]] = set()  # (msg_id, seed) already handled
+        self._forwards_this_tick = 0
         self.inbox: list[tuple[bytes, bytes]] = []  # (src address, plaintext)
 
     @property
@@ -114,19 +136,16 @@ class Node:
             request_receipt=request_receipt,
         )
         raw = bundle.to_bytes(self.identity)
-        # Wrap the sealed bundle in a routing envelope carrying its own search
-        # budget and an initial trail of just us. This is what travels; relays
-        # rewrite it, the sealed bundle inside stays untouched.
-        env = Envelope(inner=raw, hops_remaining=hop_limit, trail=[self.address])
-        encoder = Encoder(bundle.msg_id, env.to_bytes(), block_size=block_size)
+        encoder = Encoder(bundle.msg_id, raw, block_size=block_size)
         # Stealth by default: a non-urgent send starts on the single quietest
         # eligible bearer. An urgent send starts wide (all eligible), since there
         # the deadline outranks stealth.
         ordered = self._ordered(bundle)
         start_width = len(ordered) if is_urgent(bundle) else 1
-        self._inflight[bundle.msg_id] = _InFlight(bundle, encoder, width=start_width)
+        self._inflight[bundle.msg_id] = _InFlight(bundle, encoder, width=start_width,
+                                                  hop_limit=hop_limit)
         n = int(encoder.k * _OVERHEAD) + _OVERHEAD_CONST
-        self._spray(bundle, encoder, n, start_width)
+        self._spray(self._inflight[bundle.msg_id], n)
         if not request_receipt:
             self._inflight.pop(bundle.msg_id, None)
         return bundle.msg_id
@@ -135,82 +154,95 @@ class Node:
         """Eligible bearers, quietest-first (or fastest-first if urgent)."""
         return select_bearers(self.bearers, bundle, self.legal_whitelist)
 
-    def _spray(self, bundle: Bundle, encoder: Encoder, n: int, width: int) -> None:
+    def _spray(self, inflight: _InFlight, n: int) -> None:
+        bundle = inflight.bundle
         ordered = self._ordered(bundle)
-        chosen = ordered[:max(1, width)]  # only the quietest `width` bearers
+        chosen = ordered[:max(1, inflight.width)]  # only the quietest `width` bearers
         if not chosen:
             return
-        symbols = encoder.stream(n)
-        for i, sym in enumerate(symbols):
-            chosen[i % len(chosen)].send(_frame(FRAME_SYMBOL, sym))
+        for i, sym in enumerate(inflight.encoder.stream(n)):
+            # Remember our own symbols so relayed echoes of them are dropped.
+            self._seen.add((sym[_SYM_MSGID], sym[_SYM_SEED]))
+            chosen[i % len(chosen)].send(
+                _symbol_frame(bundle.dest, inflight.hop_limit, sym))
 
     # ---- receiving / servicing ----------------------------------------
     def tick(self, now: int) -> None:
         """Poll every bearer, process arrivals, and service in-flight bundles."""
+        self._forwards_this_tick = 0
         for bearer in self.bearers:
             for frame in bearer.poll():
                 if not frame:
                     continue
                 kind, body = frame[0], frame[1:]
                 if kind == FRAME_SYMBOL:
-                    self._on_symbol(body)
+                    self._on_symbol(body, bearer)
                 elif kind == FRAME_RECEIPT:
-                    self._on_receipt(body)
+                    self._on_receipt(body, bearer)
         self._service_inflight(now)
 
-    def _on_symbol(self, symbol: bytes) -> None:
-        msg_id = symbol[:16]
+    def _on_symbol(self, body: bytes, inbound: Bearer) -> None:
+        # Read only the tiny routing header — no decoding. This is what makes a
+        # borrowed node cheap: it never reassembles a message meant for others.
+        if len(body) < 17 + 32:
+            return
+        dest = body[:16]
+        hops = body[16]
+        sym = body[17:]
+        key = (sym[_SYM_MSGID], sym[_SYM_SEED])
+        if key in self._seen:
+            return  # already handled this exact fragment (loop / duplicate)
+        self._seen.add(key)
+
+        if dest == self.address:
+            self._ingest(sym)
+            return
+
+        # In transit for someone else: cut-through forward without decoding.
+        if not self.relay or hops == 0:
+            return
+        if self._forwards_this_tick >= self.max_forwards_per_tick:
+            return  # yield to the host: we've done our share of relaying this tick
+        self._forwards_this_tick += 1
+        self._relayed.add(sym[_SYM_MSGID])
+        onward = _symbol_frame(dest, hops - 1, sym)
+        for bearer in self.bearers:
+            if bearer is not inbound:  # never echo back where it came from
+                bearer.send(onward)
+
+    def _ingest(self, sym: bytes) -> None:
+        """A fragment addressed to us: only the destination pays decode cost."""
+        msg_id = sym[_SYM_MSGID]
         if msg_id in self._delivered_in:
-            return  # already have this bundle; ignore late symbols
+            return
         dec = self._decoders.get(msg_id)
         if dec is None:
             dec = self._decoders[msg_id] = Decoder()
-        if dec.add(symbol):
-            self._on_bundle_complete(dec)
+        if dec.add(sym):
+            self._deliver(dec)
 
-    def _on_bundle_complete(self, dec: Decoder) -> None:
+    def _deliver(self, dec: Decoder) -> None:
         try:
-            env = Envelope.from_bytes(dec.result())
-            bundle = Bundle.from_bytes(env.inner)
+            bundle = Bundle.from_bytes(dec.result())
         except (ValueError, struct.error):
             self._decoders.pop(dec.msg_id, None)
             return
-        if not bundle.verify():
-            self._decoders.pop(bundle.msg_id, None)
+        self._decoders.pop(dec.msg_id, None)
+        if not bundle.verify() or bundle.dest != self.address:
             return
-        self._decoders.pop(bundle.msg_id, None)
+        if bundle.msg_id not in self._delivered_in:
+            self._delivered_in.add(bundle.msg_id)
+            try:
+                plaintext = self.identity.open_sealed(bundle.payload)
+            except Exception:
+                return
+            self.inbox.append((bundle.src, plaintext))
+        if bundle.wants_receipt():
+            receipt = _frame(FRAME_RECEIPT, make_receipt(self.identity, bundle.msg_id))
+            for bearer in self.bearers:
+                bearer.send(receipt)
 
-        if bundle.dest == self.address:
-            if bundle.msg_id not in self._delivered_in:
-                self._delivered_in.add(bundle.msg_id)
-                try:
-                    plaintext = self.identity.open_sealed(bundle.payload)
-                except Exception:
-                    return
-                self.inbox.append((bundle.src, plaintext))
-            if bundle.wants_receipt():
-                self._broadcast(_frame(FRAME_RECEIPT,
-                                       make_receipt(self.identity, bundle.msg_id)))
-            return
-
-        # Not for us — the message routes itself onward, using the state it
-        # carries. Drop if: we sourced it, we've already forwarded it, we are on
-        # its trail (a loop), or its search budget is spent. Otherwise re-emit the
-        # rewritten envelope across every bearer — every open branch at once.
-        if bundle.msg_id in self._inflight or bundle.msg_id in self._relayed:
-            return
-        if not self.relay:
-            return
-        if self.address in env.trail or env.hops_remaining <= 0:
-            return
-        self._relayed.add(bundle.msg_id)
-        onward = env.forwarded_by(self.address).to_bytes()
-        encoder = Encoder(bundle.msg_id, onward)
-        n = int(encoder.k * _OVERHEAD) + _OVERHEAD_CONST
-        for i, sym in enumerate(encoder.stream(n)):
-            self.bearers[i % len(self.bearers)].send(_frame(FRAME_SYMBOL, sym))
-
-    def _on_receipt(self, body: bytes) -> None:
+    def _on_receipt(self, body: bytes, inbound: Bearer) -> None:
         matched = False
         for msg_id, inflight in self._inflight.items():
             if verify_receipt(body, inflight.bundle.dest) == msg_id:
@@ -218,19 +250,20 @@ class Node:
                 matched = True
         if matched:
             return
-        # Not ours to consume. If we relayed this bundle, carry its receipt back.
-        if self.relay:
-            try:
-                msg_id, _pub, _sig = _RECEIPT.unpack(body)
-            except struct.error:
-                return
-            if msg_id in self._relayed and msg_id not in self._fwd_receipts:
-                self._fwd_receipts.add(msg_id)
-                self._broadcast(_frame(FRAME_RECEIPT, body))
-
-    def _broadcast(self, frame: bytes) -> None:
-        for bearer in self.bearers:
-            bearer.send(frame)
+        # Not ours. If we relayed this bundle, carry its receipt back — cut-through
+        # again, and never back onto the bearer it arrived on.
+        if not self.relay:
+            return
+        try:
+            msg_id, _pub, _sig = _RECEIPT.unpack(body)
+        except struct.error:
+            return
+        if msg_id in self._relayed and msg_id not in self._fwd_receipts:
+            self._fwd_receipts.add(msg_id)
+            fr = _frame(FRAME_RECEIPT, body)
+            for bearer in self.bearers:
+                if bearer is not inbound:
+                    bearer.send(fr)
 
     def _service_inflight(self, now: int) -> None:
         done = []
@@ -248,8 +281,7 @@ class Node:
             # louder bearer is thus recruited only because delivery required it.
             ordered = self._ordered(inflight.bundle)
             inflight.width = min(inflight.width + 1, len(ordered)) if ordered else inflight.width
-            self._spray(inflight.bundle, inflight.encoder,
-                        max(2, inflight.encoder.k), inflight.width)
+            self._spray(inflight, max(2, inflight.encoder.k))
         for msg_id in done:
             self._inflight.pop(msg_id, None)
 
