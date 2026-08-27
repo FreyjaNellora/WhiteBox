@@ -1,0 +1,4 @@
+# Hyphae reference implementation — runtime dependencies.
+# Crypto is provided by libsodium via PyNaCl (Ed25519 signatures, Curve25519
+# sealed boxes). Everything else is Python standard library.
+PyNaCl>=1.5.0
