@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 
 from .bearer import Bearer
 from .bundle import Bundle
+from .envelope import Envelope
 from .fountain import Decoder, Encoder
 from .identity import Identity, address_of, verify
 from .policy import DEFAULT_LEGAL_WHITELIST, is_urgent, select_bearers
@@ -105,6 +106,7 @@ class Node:
         det_budget: int = 100,
         request_receipt: bool = True,
         block_size: int = 256,
+        hop_limit: int = 8,
     ) -> bytes:
         bundle = Bundle.create(
             self.identity, dest, dest_x_pub, plaintext, created_at,
@@ -112,7 +114,11 @@ class Node:
             request_receipt=request_receipt,
         )
         raw = bundle.to_bytes(self.identity)
-        encoder = Encoder(bundle.msg_id, raw, block_size=block_size)
+        # Wrap the sealed bundle in a routing envelope carrying its own search
+        # budget and an initial trail of just us. This is what travels; relays
+        # rewrite it, the sealed bundle inside stays untouched.
+        env = Envelope(inner=raw, hops_remaining=hop_limit, trail=[self.address])
+        encoder = Encoder(bundle.msg_id, env.to_bytes(), block_size=block_size)
         # Stealth by default: a non-urgent send starts on the single quietest
         # eligible bearer. An urgent send starts wide (all eligible), since there
         # the deadline outranks stealth.
@@ -163,9 +169,9 @@ class Node:
             self._on_bundle_complete(dec)
 
     def _on_bundle_complete(self, dec: Decoder) -> None:
-        raw = dec.result()
         try:
-            bundle = Bundle.from_bytes(raw)
+            env = Envelope.from_bytes(dec.result())
+            bundle = Bundle.from_bytes(env.inner)
         except (ValueError, struct.error):
             self._decoders.pop(dec.msg_id, None)
             return
@@ -187,17 +193,22 @@ class Node:
                                        make_receipt(self.identity, bundle.msg_id)))
             return
 
-        # Not for us. If we are our own source, ignore an echo of it. Otherwise,
-        # if we are a relay, bridge it onward across ALL our bearers — the same
-        # bundle can leave on a different medium than it arrived on.
-        if bundle.msg_id in self._inflight:
+        # Not for us — the message routes itself onward, using the state it
+        # carries. Drop if: we sourced it, we've already forwarded it, we are on
+        # its trail (a loop), or its search budget is spent. Otherwise re-emit the
+        # rewritten envelope across every bearer — every open branch at once.
+        if bundle.msg_id in self._inflight or bundle.msg_id in self._relayed:
             return
-        if self.relay and bundle.msg_id not in self._relayed:
-            self._relayed.add(bundle.msg_id)
-            encoder = Encoder(bundle.msg_id, raw)
-            n = int(encoder.k * _OVERHEAD) + _OVERHEAD_CONST
-            for i, sym in enumerate(encoder.stream(n)):
-                self.bearers[i % len(self.bearers)].send(_frame(FRAME_SYMBOL, sym))
+        if not self.relay:
+            return
+        if self.address in env.trail or env.hops_remaining <= 0:
+            return
+        self._relayed.add(bundle.msg_id)
+        onward = env.forwarded_by(self.address).to_bytes()
+        encoder = Encoder(bundle.msg_id, onward)
+        n = int(encoder.k * _OVERHEAD) + _OVERHEAD_CONST
+        for i, sym in enumerate(encoder.stream(n)):
+            self.bearers[i % len(self.bearers)].send(_frame(FRAME_SYMBOL, sym))
 
     def _on_receipt(self, body: bytes) -> None:
         matched = False
