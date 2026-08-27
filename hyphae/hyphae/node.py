@@ -74,6 +74,7 @@ class Node:
     identity: Identity
     bearers: list[Bearer] = field(default_factory=list)
     legal_whitelist: frozenset = DEFAULT_LEGAL_WHITELIST
+    relay: bool = False  # if True, forward bundles addressed to others (a bridge)
 
     def __post_init__(self) -> None:
         self._decoders: dict[bytes, Decoder] = {}
@@ -81,6 +82,8 @@ class Node:
         self._delivered_in: set[bytes] = set()   # msg_ids delivered to us
         self._confirmed_out: set[bytes] = set()  # our sends proven delivered
         self._failed_out: set[bytes] = set()     # our sends that expired
+        self._relayed: set[bytes] = set()        # msg_ids we've forwarded onward
+        self._fwd_receipts: set[bytes] = set()   # receipts we've forwarded back
         self.inbox: list[tuple[bytes, bytes]] = []  # (src address, plaintext)
 
     @property
@@ -160,8 +163,9 @@ class Node:
             self._on_bundle_complete(dec)
 
     def _on_bundle_complete(self, dec: Decoder) -> None:
+        raw = dec.result()
         try:
-            bundle = Bundle.from_bytes(dec.result())
+            bundle = Bundle.from_bytes(raw)
         except (ValueError, struct.error):
             self._decoders.pop(dec.msg_id, None)
             return
@@ -169,23 +173,49 @@ class Node:
             self._decoders.pop(bundle.msg_id, None)
             return
         self._decoders.pop(bundle.msg_id, None)
-        if bundle.dest != self.address:
-            return  # not for us (relaying is the next implementation step)
-        if bundle.msg_id not in self._delivered_in:
-            self._delivered_in.add(bundle.msg_id)
-            try:
-                plaintext = self.identity.open_sealed(bundle.payload)
-            except Exception:
-                return
-            self.inbox.append((bundle.src, plaintext))
-        if bundle.wants_receipt():
-            self._broadcast(_frame(FRAME_RECEIPT,
-                                   make_receipt(self.identity, bundle.msg_id)))
+
+        if bundle.dest == self.address:
+            if bundle.msg_id not in self._delivered_in:
+                self._delivered_in.add(bundle.msg_id)
+                try:
+                    plaintext = self.identity.open_sealed(bundle.payload)
+                except Exception:
+                    return
+                self.inbox.append((bundle.src, plaintext))
+            if bundle.wants_receipt():
+                self._broadcast(_frame(FRAME_RECEIPT,
+                                       make_receipt(self.identity, bundle.msg_id)))
+            return
+
+        # Not for us. If we are our own source, ignore an echo of it. Otherwise,
+        # if we are a relay, bridge it onward across ALL our bearers — the same
+        # bundle can leave on a different medium than it arrived on.
+        if bundle.msg_id in self._inflight:
+            return
+        if self.relay and bundle.msg_id not in self._relayed:
+            self._relayed.add(bundle.msg_id)
+            encoder = Encoder(bundle.msg_id, raw)
+            n = int(encoder.k * _OVERHEAD) + _OVERHEAD_CONST
+            for i, sym in enumerate(encoder.stream(n)):
+                self.bearers[i % len(self.bearers)].send(_frame(FRAME_SYMBOL, sym))
 
     def _on_receipt(self, body: bytes) -> None:
+        matched = False
         for msg_id, inflight in self._inflight.items():
             if verify_receipt(body, inflight.bundle.dest) == msg_id:
                 inflight.delivered = True
+                matched = True
+        if matched:
+            return
+        # Not ours to consume. If we relayed this bundle, carry its receipt back.
+        if self.relay:
+            try:
+                msg_id, _pub, _sig = _RECEIPT.unpack(body)
+            except struct.error:
+                return
+            if msg_id in self._relayed and msg_id not in self._fwd_receipts:
+                self._fwd_receipts.add(msg_id)
+                self._broadcast(_frame(FRAME_RECEIPT, body))
 
     def _broadcast(self, frame: bytes) -> None:
         for bearer in self.bearers:
