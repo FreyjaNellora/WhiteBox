@@ -32,7 +32,10 @@ from .bearer import Bearer
 from .bundle import Bundle
 from .fountain import Decoder, Encoder
 from .identity import Identity, address_of, verify
-from .policy import DEFAULT_LEGAL_WHITELIST, is_urgent, select_bearers
+from .policy import (
+    DEFAULT_LEGAL_WHITELIST, METERED_LEGAL_CLASSES, RelayConsent, is_urgent,
+    select_bearers,
+)
 
 FRAME_SYMBOL = 1
 FRAME_RECEIPT = 2
@@ -92,12 +95,19 @@ class Node:
     identity: Identity
     bearers: list[Bearer] = field(default_factory=list)
     legal_whitelist: frozenset = DEFAULT_LEGAL_WHITELIST
-    relay: bool = False  # if True, forward bundles addressed to others (a bridge)
+    relay: bool = False  # convenience: True == a permissive RelayConsent
+    consent: RelayConsent | None = None  # the volunteer's opt-in relay terms
     # Good-guest cap: the most symbol-forwards this node will do for OTHERS per
     # tick, so a borrowed node never has its own traffic starved by relaying.
     max_forwards_per_tick: int = 256
+    battery_pct: int = 100  # updated by the host; gates relaying via consent
 
     def __post_init__(self) -> None:
+        if self.consent is None:
+            # relay=True keeps the old permissive behavior (incl. metered links);
+            # relay=False means we do not relay for others.
+            self.consent = RelayConsent(enabled=self.relay, allow_metered=True)
+        self._relayed_bytes = 0
         self._decoders: dict[bytes, Decoder] = {}
         self._inflight: dict[bytes, _InFlight] = {}
         self._delivered_in: set[bytes] = set()   # msg_ids delivered to us
@@ -198,17 +208,31 @@ class Node:
             self._ingest(sym)
             return
 
-        # In transit for someone else: cut-through forward without decoding.
-        if not self.relay or hops == 0:
+        # In transit for someone else: cut-through forward without decoding,
+        # but only within the volunteer's opt-in terms.
+        c = self.consent
+        if not c.enabled or hops == 0:
             return
+        if self.battery_pct < c.battery_floor_pct:
+            return  # too low on battery to carry others' traffic
+        if c.data_budget_bytes is not None and self._relayed_bytes >= c.data_budget_bytes:
+            return  # the volunteer's donated data budget is spent
         if self._forwards_this_tick >= self.max_forwards_per_tick:
             return  # yield to the host: we've done our share of relaying this tick
-        self._forwards_this_tick += 1
-        self._relayed.add(sym[_SYM_MSGID])
         onward = _symbol_frame(dest, hops - 1, sym)
+        forwarded = False
         for bearer in self.bearers:
-            if bearer is not inbound:  # never echo back where it came from
-                bearer.send(onward)
+            if bearer is inbound:  # never echo back where it came from
+                continue
+            metered = bearer.capabilities().legal_class in METERED_LEGAL_CLASSES
+            if metered and not c.allow_metered:
+                continue  # don't spend the volunteer's cellular unless allowed
+            bearer.send(onward)
+            self._relayed_bytes += len(onward)
+            forwarded = True
+        if forwarded:
+            self._forwards_this_tick += 1
+            self._relayed.add(sym[_SYM_MSGID])
 
     def _ingest(self, sym: bytes) -> None:
         """A fragment addressed to us: only the destination pays decode cost."""
@@ -251,8 +275,8 @@ class Node:
         if matched:
             return
         # Not ours. If we relayed this bundle, carry its receipt back — cut-through
-        # again, and never back onto the bearer it arrived on.
-        if not self.relay:
+        # again, within the same consent terms, never back onto the inbound bearer.
+        if not self.consent.enabled:
             return
         try:
             msg_id, _pub, _sig = _RECEIPT.unpack(body)
@@ -262,8 +286,12 @@ class Node:
             self._fwd_receipts.add(msg_id)
             fr = _frame(FRAME_RECEIPT, body)
             for bearer in self.bearers:
-                if bearer is not inbound:
-                    bearer.send(fr)
+                if bearer is inbound:
+                    continue
+                metered = bearer.capabilities().legal_class in METERED_LEGAL_CLASSES
+                if metered and not self.consent.allow_metered:
+                    continue
+                bearer.send(fr)
 
     def _service_inflight(self, now: int) -> None:
         done = []

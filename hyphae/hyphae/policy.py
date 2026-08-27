@@ -44,6 +44,31 @@ DEFAULT_LEGAL_WHITELIST = frozenset({
 
 URGENT_PRIORITY = 128  # priority at/above this is treated as deadline-driven
 
+# Bearers whose use costs the volunteer money / a metered plan (cellular). A
+# relay only forwards onto these when the volunteer has explicitly allowed it.
+METERED_LEGAL_CLASSES = frozenset({"licensed-carrier"})
+
+
+@dataclass
+class RelayConsent:
+    """A volunteer's opt-in terms for carrying other people's sealed messages.
+
+    Off by default; the app turns it on. Every field is a limit the volunteer
+    controls, so donating connectivity never surprises them:
+
+    * ``enabled`` — relay for others at all.
+    * ``allow_metered`` — may also forward over metered cellular (the "use my
+      cellular service" switch). Default False: free/Wi-Fi links only.
+    * ``data_budget_bytes`` — stop relaying once this much has been carried
+      (None = no cap). Protects the data plan.
+    * ``battery_floor_pct`` — stop relaying when battery drops below this.
+    """
+
+    enabled: bool = False
+    allow_metered: bool = False
+    data_budget_bytes: int | None = None
+    battery_floor_pct: int = 0
+
 
 @dataclass
 class Decision:

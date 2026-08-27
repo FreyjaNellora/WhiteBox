@@ -21,7 +21,9 @@ from .bearer import (
     loopback_pair,
     LEGAL_CLASSES,
 )
-from .policy import evaluate, select_bearers, Decision, DEFAULT_LEGAL_WHITELIST
+from .policy import (
+    evaluate, select_bearers, Decision, DEFAULT_LEGAL_WHITELIST, RelayConsent,
+)
 from .node import Node, make_receipt, verify_receipt
 from .ip_bearer import IPBearer
 from .scanner import LinkOpportunity, OpportunityScanner
@@ -30,6 +32,6 @@ __all__ = [
     "Identity", "address_of", "verify", "Bundle", "Encoder", "Decoder",
     "Bearer", "Capabilities", "LoopbackBearer", "FileBearer", "loopback_pair",
     "LEGAL_CLASSES", "evaluate", "select_bearers", "Decision",
-    "DEFAULT_LEGAL_WHITELIST", "Node", "make_receipt", "verify_receipt",
-    "IPBearer", "LinkOpportunity", "OpportunityScanner",
+    "DEFAULT_LEGAL_WHITELIST", "RelayConsent", "Node", "make_receipt",
+    "verify_receipt", "IPBearer", "LinkOpportunity", "OpportunityScanner",
 ]
